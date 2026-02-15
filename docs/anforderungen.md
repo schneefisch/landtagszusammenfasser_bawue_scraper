@@ -191,23 +191,119 @@ Jeder Vorgang durchläuft mehrere Stationen.
 
 ## Datenquellen BaWue Landtag
 
-### Parlamentsdokumentation (PARLIS)
+> **Hinweis:** Der Landtag BaWue bietet **keine offizielle API** und **keine Open-Data-Schnittstelle** an. Baden-Württemberg liegt im [Open Data Ranking](https://opendataranking.de/laender/baden-wuerttemberg/) im unteren Drittel. Das Open-Data-Portal [daten.bw](https://www.daten-bw.de/) enthält keine parlamentarischen Daten.
 
-Die Hauptdatenquelle ist die [Parlamentsdokumentation](https://www.landtag-bw.de/de/Dokumente) des Landtags BaWue mit:
+### Übersicht Datenquellen
 
-- **Drucksachen** — Gesetzentwürfe, Anträge, Anfragen, Beschlussempfehlungen
-- **Gesetzesbeschlüsse** — Verabschiedete Gesetze
-- **Plenarprotokolle** — Vollständige Sitzungsprotokolle
-- **Sach- und Sprechregister** — Indizes nach Thema und Redner
+| Quelle | Typ | Empfehlung |
+|--------|-----|------------|
+| **PARLIS JSON-Endpunkt** | Undokumentierte API (POST/GET) | **Primärquelle für Vorgänge** — strukturierter als reines Web-Scraping |
+| **PARLIS Web-Oberfläche** | Web-Scraping | Fallback / für Daten die der JSON-Endpunkt nicht liefert |
+| **landtag-bw.de PDFs** | Download + Textextraktion | Für Volltexte der Drucksachen |
+| **ICS-Kalender** | Maschinenlesbar | Für Sitzungstermine |
+
+### 1. PARLIS — Undokumentierte JSON-API (Primärquelle)
+
+Das PARLIS-System (`parlis.landtag-bw.de`) bietet neben der Web-Oberfläche einen JSON-Endpunkt, der nicht offiziell dokumentiert ist, aber vom Open-Data-Projekt [dokukratie (OKF)](https://github.com/okfde/dokukratie) produktiv genutzt wird.
+
+**Endpunkte:**
+
+| Endpunkt | Methode | Funktion |
+|----------|---------|----------|
+| `https://parlis.landtag-bw.de/parlis/browse.tt.json` | POST (JSON) | Suche nach Vorgängen, liefert `report_id` + `item_count` |
+| `https://parlis.landtag-bw.de/parlis/report.tt.html` | GET | Ergebnisse abrufen (paginiert via `report_id`, `start`, `chunksize`) |
+
+**Query-Format (POST-Body für browse.tt.json):**
+
+```json
+{
+    "action": "SearchAndDisplay",
+    "report": {
+        "rhl": "main",
+        "rhlmode": "add",
+        "format": "suchergebnis-vorgang-full",
+        "mime": "html",
+        "sort": "SORT01/D SORT02/D SORT03"
+    },
+    "search": {
+        "lines": {
+            "l1": "<wahlperiode>",
+            "l2": "<start_date DD.MM.YYYY>",
+            "l3": "<end_date DD.MM.YYYY>",
+            "l4": "<document_type>"
+        },
+        "serverrecordname": "vorgang"
+    },
+    "sources": ["Star"]
+}
+```
+
+**Ablauf:**
+
+1. Session aufbauen (Cookies/Referer von `parlis.landtag-bw.de/parlis/`)
+2. POST an `browse.tt.json` → liefert `report_id` und `item_count`
+3. GET auf `report.tt.html?report_id=X&start=0&chunksize=50` → HTML mit Ergebnissen
+4. HTML parsen (XPath: `.//div[contains(@class, "efxRecordRepeater")]`)
+5. Paginierung: `start` inkrementieren bis alle Ergebnisse abgeholt
+
+**Einschränkungen:**
+
+- Nicht offiziell dokumentiert, kann sich jederzeit ändern
+- Ergebnisse kommen als HTML (nicht JSON), müssen geparst werden
+- Benötigt Session-Cookie (erst Startseite laden)
+- Verfügbare Suchfelder/Dokumenttypen müssen experimentell ermittelt werden
+
+**Technische Referenz:** [okfde/dokukratie BW config](https://github.com/okfde/dokukratie/blob/main/dokukratie/bw.yml)
+
+### 2. PARLIS Web-Oberfläche (Fallback)
+
+Die offizielle Web-Oberfläche: `https://parlis.landtag-bw.de/parlis/`
+
+- Parlamentarische Vorgänge, Drucksachen und Plenarprotokolle ab der 9. Wahlperiode (1984)
+- Suchfunktionen: Einfach, Erweitert, Expertenmodus (Bool-Operatoren), Thesaurus
+- Ergebnisse als HTML, PDFs zum Download
+- Kein Export in maschinenlesbare Formate
+
+### 3. Landtag-Website (landtag-bw.de)
+
+| Bereich | URL | Inhalt |
+|---------|-----|--------|
+| Drucksachen | `/de/dokumente/drucksachen` | Suchformular + PDF-Downloads |
+| Plenarprotokolle | `/de/dokumente/plenarprotokolle` | Protokolle als PDF |
+| Gesetzesbeschlüsse | `/de/Gesetzesbeschluesse.html` | Verabschiedete Gesetze |
+| Sitzungskalender | ICS-Download verfügbar | `terminkalender.ics` |
+
+- PDFs mit Blob-IDs (`/resource/blob/{id}/...`)
+- Kein REST-API, kein RSS/Atom-Feed
+
+### 4. ICS-Kalender (Sitzungstermine)
+
+Der Landtag bietet einen ICS-Kalender-Download für Sitzungstermine an. Dieses maschinenlesbare Format eignet sich als Quelle für `Sitzung`-Daten.
+
+### 5. Drittanbieter-Quellen (ergänzend)
+
+| Quelle | Relevanz | Daten |
+|--------|----------|-------|
+| [abgeordnetenwatch.de API](https://www.abgeordnetenwatch.de/api) | Begrenzt | Abgeordnete, Abstimmungen — keine Drucksachen/Vorgänge |
+| [dokukratie (OKF)](https://github.com/okfde/dokukratie) | Hoch (Referenz) | Funktionierender BW-Scraper, nutzt PARLIS JSON-Endpunkt |
+| Beteiligungsportal BaWue | Ergänzend | Gesetzentwürfe im Anhörungsverfahren |
+
+### Empfohlene Scraper-Strategie
+
+1. **PARLIS JSON-Endpunkt als Primärquelle** — weniger fragil als reines HTML-Scraping, liefert strukturierte Vorgangsdaten
+2. **HTML-Parsing der Ergebnisseiten** für Detail-Extraktion (Stationen, Initiatoren, Dokumentlinks)
+3. **PDF-Download + Textextraktion** für Volltexte der Drucksachen
+4. **ICS-Kalender** für Sitzungstermine als ergänzende Quelle
+5. **dokukratie-Projekt als technische Referenz** — funktionierender BW-Scraper mit bekannten Query-Parametern
 
 ### Zu scrapen
 
 | Datenbereich | Quelle | LTZF-Modell |
 |--------------|--------|-------------|
-| Gesetzgebungsvorgänge | Drucksachen, Vorgangsübersichten | `Vorgang` + `Station` |
-| Tagesordnungen | Plenarsitzungen, Ausschusssitzungen | `Sitzung` + `Top` |
-| Ausschussarbeit | Ausschussprotokolle, Beschlussempfehlungen | `Station` (typ: `parl-ausschber`) |
-| Dokumente | PDFs der Drucksachen | `Dokument` |
+| Gesetzgebungsvorgänge | PARLIS JSON-Endpunkt + Detail-Seiten | `Vorgang` + `Station` |
+| Tagesordnungen | ICS-Kalender, Plenarsitzungen | `Sitzung` + `Top` |
+| Ausschussarbeit | PARLIS, Ausschussprotokolle | `Station` (typ: `parl-ausschber`) |
+| Dokumente | PDFs der Drucksachen (landtag-bw.de) | `Dokument` |
 
 ## Konfiguration
 
