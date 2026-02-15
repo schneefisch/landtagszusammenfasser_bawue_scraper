@@ -16,3 +16,21 @@ venv/
 .idea/
 .vscode/
 *.swp
+
+# Environment
+.env
+
+# Build
+dist/
+build/
+
+# Cache
+cache/
+
+# Coverage
+htmlcov/
+.coverage
+.coverage.*
+
+# Ruff
+.ruff_cache/
