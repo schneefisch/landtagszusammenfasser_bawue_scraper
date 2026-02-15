@@ -44,11 +44,49 @@ class TestVorgangstypMapping:
 
 
 class TestStationstypMapping:
-    """Tests for map_stationstyp — regex logic is stubbed, so these test the stub fallback."""
+    def test_erste_beratung_maps_to_vollversammlung(self):
+        assert map_stationstyp("Erste Beratung   Plenarprotokoll 17/141 05.02.2026") == Stationstyp.PARL_VOLLVLSGN
 
-    def test_stub_returns_sonstig(self):
-        # todo: update these tests when regex logic is implemented
-        assert map_stationstyp("Erste Beratung") == Stationstyp.SONSTIG
+    def test_zweite_beratung_maps_to_vollversammlung(self):
+        assert map_stationstyp("Zweite Beratung   Plenarprotokoll 17/142 06.02.2026") == Stationstyp.PARL_VOLLVLSGN
+
+    def test_gesetzentwurf_maps_to_initiativ(self):
+        assert (
+            map_stationstyp("Gesetzentwurf    Fraktion GRÜNE  04.02.2026 Drucksache 17/10266   (13 S.)")
+            == Stationstyp.PARL_INITIATIV
+        )
+
+    def test_gesetzentwurf_landesregierung_maps_to_preparl_regent(self):
+        text = "Gesetzentwurf    Landesregierung  04.02.2026 Drucksache 17/10266"
+        assert map_stationstyp(text, initiator="Landesregierung") == Stationstyp.PREPARL_REGENT
+
+    def test_beschlussempfehlung_maps_to_ausschussbericht(self):
+        text = "Beschlussempfehlung und Bericht    Ausschuss für Wirtschaft  02.02.2026 Drucksache 17/10210"
+        assert map_stationstyp(text) == Stationstyp.PARL_AUSSCHBER
+
+    def test_zustimmung_maps_to_akzeptanz(self):
+        assert map_stationstyp("Zustimmung   Plenarprotokoll 17/143") == Stationstyp.PARL_AKZEPTANZ
+
+    def test_ablehnung_maps_to_ablehnung(self):
+        assert map_stationstyp("Ablehnung   Plenarprotokoll 17/143") == Stationstyp.PARL_ABLEHNUNG
+
+    def test_ausfertigung_maps_to_vesja(self):
+        assert map_stationstyp("Ausfertigung   10.03.2026") == Stationstyp.POSTPARL_VESJA
+
+    def test_gesetzblatt_maps_to_gsblt(self):
+        assert map_stationstyp("Gesetzblatt   15.03.2026") == Stationstyp.POSTPARL_GSBLT
+
+    def test_inkrafttreten_maps_to_kraft(self):
+        assert map_stationstyp("Inkrafttreten   01.04.2026") == Stationstyp.POSTPARL_KRAFT
+
+    def test_unknown_text_maps_to_sonstig(self):
+        assert map_stationstyp("unknown text") == Stationstyp.SONSTIG
+
+    def test_empty_text_maps_to_sonstig(self):
+        assert map_stationstyp("") == Stationstyp.SONSTIG
+
+    def test_case_insensitive_matching(self):
+        assert map_stationstyp("erste beratung   Plenarprotokoll 17/141") == Stationstyp.PARL_VOLLVLSGN
 
     def test_map_dict_has_expected_keys(self):
         assert "Gesetzentwurf" in STATIONSTYP_MAP
@@ -57,11 +95,32 @@ class TestStationstypMapping:
 
 
 class TestDokumententypMapping:
-    """Tests for map_dokumententyp — regex logic is stubbed, so these test the stub fallback."""
+    def test_gesetzentwurf_maps_to_entwurf(self):
+        assert map_dokumententyp("Gesetzentwurf") == Dokumententyp.ENTWURF
 
-    def test_stub_returns_sonstig(self):
-        # todo: update these tests when regex logic is implemented
-        assert map_dokumententyp("Gesetzentwurf") == Dokumententyp.SONSTIG
+    def test_gesetzentwurf_vorparlamentarisch_maps_to_preparl_entwurf(self):
+        assert map_dokumententyp("Gesetzentwurf", is_vorparlamentarisch=True) == Dokumententyp.PREPARL_ENTWURF
+
+    def test_plenarprotokoll_maps_to_redeprotokoll(self):
+        assert map_dokumententyp("Plenarprotokoll") == Dokumententyp.REDEPROTOKOLL
+
+    def test_antrag_maps_to_antrag(self):
+        assert map_dokumententyp("Antrag") == Dokumententyp.ANTRAG
+
+    def test_kleine_anfrage_maps_to_anfrage(self):
+        assert map_dokumententyp("Kleine Anfrage") == Dokumententyp.ANFRAGE
+
+    def test_stellungnahme_maps_to_stellungnahme(self):
+        assert map_dokumententyp("Stellungnahme") == Dokumententyp.STELLUNGNAHME
+
+    def test_beschlussempfehlung_maps_to_beschlussempf(self):
+        assert map_dokumententyp("Beschlussempfehlung") == Dokumententyp.BESCHLUSSEMPF
+
+    def test_unknown_maps_to_sonstig(self):
+        assert map_dokumententyp("unknown") == Dokumententyp.SONSTIG
+
+    def test_empty_maps_to_sonstig(self):
+        assert map_dokumententyp("") == Dokumententyp.SONSTIG
 
     def test_map_dict_has_expected_keys(self):
         assert "Antrag" in DOKUMENTENTYP_MAP

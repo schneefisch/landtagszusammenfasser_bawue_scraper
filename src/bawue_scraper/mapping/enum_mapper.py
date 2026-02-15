@@ -1,7 +1,7 @@
 """Mapping from PARLIS terminology to LTZF enum values.
 
 The dictionaries below are fully populated from the architecture document.
-The regex-based matching functions that use them are stubbed for TDD implementation.
+The matching functions use case-insensitive substring matching against dictionary keys.
 """
 
 from bawue_scraper.domain.enums import Dokumententyp, Stationstyp, Vorgangstyp
@@ -24,6 +24,8 @@ VORGANGSTYP_MAP: dict[str, Vorgangstyp] = {
 
 # ---------------------------------------------------------------------------
 # Stationstyp mapping: Fundstelle text pattern → LTZF Stationstyp
+# Ordered longest-first so "Beschlussempfehlung und Bericht" matches before
+# shorter patterns. "Gesetzentwurf" must come after "Erste/Zweite/Dritte Beratung".
 # ---------------------------------------------------------------------------
 STATIONSTYP_MAP: dict[str, Stationstyp] = {
     "Gesetzentwurf": Stationstyp.PARL_INITIATIV,  # default; override for Landesregierung → PREPARL_REGENT
@@ -41,6 +43,9 @@ STATIONSTYP_MAP: dict[str, Stationstyp] = {
     "Inkrafttreten": Stationstyp.POSTPARL_KRAFT,
 }
 
+# Sorted keys longest-first for greedy matching
+_STATIONSTYP_KEYS_SORTED = sorted(STATIONSTYP_MAP.keys(), key=len, reverse=True)
+
 # ---------------------------------------------------------------------------
 # Dokumententyp mapping: document context → LTZF Dokumententyp
 # ---------------------------------------------------------------------------
@@ -56,6 +61,8 @@ DOKUMENTENTYP_MAP: dict[str, Dokumententyp] = {
     "Plenarprotokoll": Dokumententyp.REDEPROTOKOLL,
     "Mitteilung": Dokumententyp.MITTEILUNG,
 }
+
+_DOKUMENTENTYP_KEYS_SORTED = sorted(DOKUMENTENTYP_MAP.keys(), key=len, reverse=True)
 
 
 def map_vorgangstyp(parlis_typ: str) -> Vorgangstyp:
@@ -73,8 +80,8 @@ def map_vorgangstyp(parlis_typ: str) -> Vorgangstyp:
 def map_stationstyp(fundstelle_text: str, initiator: str | None = None) -> Stationstyp:
     """Map a Fundstelle text to the LTZF Stationstyp enum.
 
-    Uses regex matching against known patterns. If the station is a Gesetzentwurf
-    from the Landesregierung, maps to PREPARL_REGENT instead of PARL_INITIATIV.
+    Uses case-insensitive substring matching against known patterns, longest first.
+    If the station is a Gesetzentwurf from the Landesregierung, maps to PREPARL_REGENT.
 
     Args:
         fundstelle_text: The raw Fundstelle text from PARLIS.
@@ -83,8 +90,13 @@ def map_stationstyp(fundstelle_text: str, initiator: str | None = None) -> Stati
     Returns:
         The corresponding LTZF Stationstyp, or SONSTIG if no match.
     """
-    # todo: implement regex matching against STATIONSTYP_MAP keys
-    # todo: handle Gesetzentwurf from Landesregierung → PREPARL_REGENT
+    text_lower = fundstelle_text.lower()
+    for key in _STATIONSTYP_KEYS_SORTED:
+        if key.lower() in text_lower:
+            # Special case: Gesetzentwurf from Landesregierung → PREPARL_REGENT
+            if key == "Gesetzentwurf" and initiator and "Landesregierung" in initiator:
+                return Stationstyp.PREPARL_REGENT
+            return STATIONSTYP_MAP[key]
     return Stationstyp.SONSTIG
 
 
@@ -98,6 +110,10 @@ def map_dokumententyp(context: str, is_vorparlamentarisch: bool = False) -> Doku
     Returns:
         The corresponding LTZF Dokumententyp, or SONSTIG if no match.
     """
-    # todo: implement regex matching against DOKUMENTENTYP_MAP keys
-    # todo: handle vorparlamentarisch Gesetzentwurf → PREPARL_ENTWURF
+    context_lower = context.lower()
+    for key in _DOKUMENTENTYP_KEYS_SORTED:
+        if key.lower() in context_lower:
+            if key == "Gesetzentwurf" and is_vorparlamentarisch:
+                return Dokumententyp.PREPARL_ENTWURF
+            return DOKUMENTENTYP_MAP[key]
     return Dokumententyp.SONSTIG

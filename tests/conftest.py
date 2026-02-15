@@ -100,8 +100,10 @@ def mock_vorgang_source():
 
 @pytest.fixture()
 def mock_document_extractor():
-    """A mock DocumentExtractor."""
-    return MagicMock()
+    """A mock DocumentExtractor (extract_text raises NotImplementedError by default)."""
+    mock = MagicMock()
+    mock.extract_text.side_effect = NotImplementedError
+    return mock
 
 
 @pytest.fixture()

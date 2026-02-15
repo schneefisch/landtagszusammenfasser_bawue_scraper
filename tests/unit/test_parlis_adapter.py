@@ -1,30 +1,283 @@
 """Tests for the PARLIS adapter."""
 
+from datetime import date
+
 import pytest
+import responses
 
 from bawue_scraper.adapters.parlis_adapter import ParlisAdapter
 
+BASE_URL = "https://parlis.landtag-bw.de/parlis/"
+BROWSE_URL = BASE_URL + "browse.tt.json"
+REPORT_URL = BASE_URL + "report.tt.html"
 
-class TestParlisAdapter:
+SAMPLE_HTML_RECORD = """<html><body>
+<div class="efxRecordRepeater">
+  <a class="efxZoomShort-Vorgang">Gesetz zur Änderung des Landeshochschulgesetzes</a>
+  <dl>
+    <dt>Vorgangs-ID:</dt><dd>V-12345</dd>
+    <dt>Vorgangstyp:</dt><dd>Gesetzgebung</dd>
+    <dt>Initiative:</dt><dd>Fraktion GRÜNE</dd>
+    <dt>Aktueller Stand:</dt><dd>Verkündet</dd>
+  </dl>
+  <a class="fundstellenLinks" href="https://www.landtag-bw.de/resource/blob/12345/doc.pdf">
+    Gesetzentwurf    Fraktion GRÜNE  04.02.2026 Drucksache 17/10266   (13 S.)
+  </a>
+  <a class="fundstellenLinks" href="">
+    Erste Beratung   Plenarprotokoll 17/141 05.02.2026
+  </a>
+  <a class="fundstellenLinks" href="https://www.landtag-bw.de/resource/blob/67890/report.pdf">
+    Beschlussempfehlung und Bericht    Ausschuss für Wirtschaft  02.02.2026 Drucksache 17/10210
+  </a>
+  <script>var url = "/parlis/vorgang/V-12345";</script>
+</div>
+</body></html>"""
+
+SAMPLE_HTML_TWO_RECORDS = """<html><body>
+<div class="efxRecordRepeater">
+  <a class="efxZoomShort-Vorgang">Gesetz A</a>
+  <dl><dt>Vorgangs-ID:</dt><dd>V-001</dd><dt>Vorgangstyp:</dt><dd>Gesetzgebung</dd><dt>Initiative:</dt><dd>CDU</dd></dl>
+  <a class="fundstellenLinks" href="">Gesetzentwurf    CDU  01.01.2026 Drucksache 17/10000</a>
+  <script>var url = "/parlis/vorgang/V-001";</script>
+</div>
+<div class="efxRecordRepeater">
+  <a class="efxZoomShort-Vorgang">Gesetz B</a>
+  <dl><dt>Vorgangs-ID:</dt><dd>V-002</dd><dt>Vorgangstyp:</dt><dd>Gesetzgebung</dd><dt>Initiative:</dt><dd>SPD</dd></dl>
+  <a class="fundstellenLinks" href="">Gesetzentwurf    SPD  02.01.2026 Drucksache 17/10001</a>
+  <script>var url = "/parlis/vorgang/V-002";</script>
+</div>
+</body></html>"""
+
+
+@pytest.fixture()
+def adapter(config):
+    """Create a ParlisAdapter without establishing a session."""
+    return ParlisAdapter(config)
+
+
+class TestParlisAdapterInit:
     def test_instantiation(self, config):
         adapter = ParlisAdapter(config)
         assert adapter._config is config
+        assert adapter._session is not None
 
-    def test_search_not_implemented(self, config):
-        adapter = ParlisAdapter(config)
-        with pytest.raises(NotImplementedError):
-            from datetime import date
 
-            adapter.search("Gesetzgebung", date(2026, 1, 1), date(2026, 2, 1))
+class TestEstablishSession:
+    @responses.activate
+    def test_establish_session_sets_cookies(self, adapter):
+        responses.add(
+            responses.GET,
+            BASE_URL,
+            body="<html>PARLIS</html>",
+            status=200,
+            headers={"Set-Cookie": "JSESSIONID=abc123; Path=/"},
+        )
+        adapter._establish_session()
+        assert len(responses.calls) == 1
+        assert responses.calls[0].request.url == BASE_URL
 
-    def test_get_detail_not_implemented(self, config):
-        adapter = ParlisAdapter(config)
+
+class TestSearchQueryConstruction:
+    @responses.activate
+    def test_search_sends_correct_post_body(self, adapter):
+        responses.add(responses.GET, BASE_URL, body="<html></html>", status=200)
+        responses.add(
+            responses.POST,
+            BROWSE_URL,
+            json={"report_id": "rpt-123", "item_count": 0},
+            status=200,
+        )
+
+        adapter.search("Gesetzgebung", date(2026, 1, 1), date(2026, 2, 1))
+
+        post_call = responses.calls[1]
+        import json
+
+        body = json.loads(post_call.request.body)
+        assert body["action"] == "SearchAndDisplay"
+        assert body["search"]["lines"]["l1"] == "17"
+        assert body["search"]["lines"]["l2"] == "01.01.2026"
+        assert body["search"]["lines"]["l3"] == "01.02.2026"
+        assert body["search"]["lines"]["l4"] == "Gesetzgebung"
+        assert body["search"]["serverrecordname"] == "vorgang"
+
+    @responses.activate
+    def test_search_uses_configured_wahlperiode(self, config, monkeypatch):
+        monkeypatch.setenv("WAHLPERIODE", "18")
+        config2 = type(config)()
+        adapter2 = ParlisAdapter(config2)
+
+        responses.add(responses.GET, BASE_URL, body="<html></html>", status=200)
+        responses.add(
+            responses.POST,
+            BROWSE_URL,
+            json={"report_id": "rpt-123", "item_count": 0},
+            status=200,
+        )
+
+        adapter2.search("Gesetzgebung", date(2026, 1, 1), date(2026, 2, 1))
+        import json
+
+        body = json.loads(responses.calls[1].request.body)
+        assert body["search"]["lines"]["l1"] == "18"
+
+
+class TestResultParsing:
+    @responses.activate
+    def test_parses_vorgang_from_html(self, adapter):
+        responses.add(responses.GET, BASE_URL, body="<html></html>", status=200)
+        responses.add(
+            responses.POST,
+            BROWSE_URL,
+            json={"report_id": "rpt-123", "item_count": 1},
+            status=200,
+        )
+        responses.add(
+            responses.GET,
+            REPORT_URL,
+            body=SAMPLE_HTML_RECORD,
+            status=200,
+        )
+
+        results = adapter.search("Gesetzgebung", date(2026, 1, 1), date(2026, 2, 1))
+
+        assert len(results) == 1
+        vorgang = results[0]
+        assert vorgang["titel"] == "Gesetz zur Änderung des Landeshochschulgesetzes"
+        assert vorgang["Vorgangs-ID"] == "V-12345"
+        assert vorgang["Initiative"] == "Fraktion GRÜNE"
+        assert len(vorgang["fundstellen_parsed"]) == 3
+
+    @responses.activate
+    def test_parses_multiple_records(self, adapter):
+        responses.add(responses.GET, BASE_URL, body="<html></html>", status=200)
+        responses.add(
+            responses.POST,
+            BROWSE_URL,
+            json={"report_id": "rpt-123", "item_count": 2},
+            status=200,
+        )
+        responses.add(responses.GET, REPORT_URL, body=SAMPLE_HTML_TWO_RECORDS, status=200)
+
+        results = adapter.search("Gesetzgebung", date(2026, 1, 1), date(2026, 2, 1))
+        assert len(results) == 2
+        assert results[0]["titel"] == "Gesetz A"
+        assert results[1]["titel"] == "Gesetz B"
+
+
+class TestFundstelleParsing:
+    @responses.activate
+    def test_gesetzentwurf_fundstelle(self, adapter):
+        responses.add(responses.GET, BASE_URL, body="<html></html>", status=200)
+        responses.add(responses.POST, BROWSE_URL, json={"report_id": "rpt-1", "item_count": 1}, status=200)
+        responses.add(responses.GET, REPORT_URL, body=SAMPLE_HTML_RECORD, status=200)
+
+        results = adapter.search("Gesetzgebung", date(2026, 1, 1), date(2026, 2, 1))
+        fund = results[0]["fundstellen_parsed"][0]
+        assert fund["datum"] == "04.02.2026"
+        assert fund["drucksache"] == "17/10266"
+        assert fund["station_typ"] == "Gesetzentwurf"
+        assert fund["seiten"] == 13
+        assert fund["pdf_url"] == "https://www.landtag-bw.de/resource/blob/12345/doc.pdf"
+
+    @responses.activate
+    def test_plenarprotokoll_fundstelle(self, adapter):
+        responses.add(responses.GET, BASE_URL, body="<html></html>", status=200)
+        responses.add(responses.POST, BROWSE_URL, json={"report_id": "rpt-1", "item_count": 1}, status=200)
+        responses.add(responses.GET, REPORT_URL, body=SAMPLE_HTML_RECORD, status=200)
+
+        results = adapter.search("Gesetzgebung", date(2026, 1, 1), date(2026, 2, 1))
+        fund = results[0]["fundstellen_parsed"][1]
+        assert fund["datum"] == "05.02.2026"
+        assert fund["plenarprotokoll"] == "17/141"
+        assert fund["station_typ"] == "Erste Beratung"
+
+    @responses.activate
+    def test_ausschuss_fundstelle(self, adapter):
+        responses.add(responses.GET, BASE_URL, body="<html></html>", status=200)
+        responses.add(responses.POST, BROWSE_URL, json={"report_id": "rpt-1", "item_count": 1}, status=200)
+        responses.add(responses.GET, REPORT_URL, body=SAMPLE_HTML_RECORD, status=200)
+
+        results = adapter.search("Gesetzgebung", date(2026, 1, 1), date(2026, 2, 1))
+        fund = results[0]["fundstellen_parsed"][2]
+        assert fund["datum"] == "02.02.2026"
+        assert fund["drucksache"] == "17/10210"
+        assert fund["station_typ"] == "Beschlussempfehlung und Bericht"
+        assert "Ausschuss für Wirtschaft" in fund["ausschuss"]
+
+
+class TestPagination:
+    @responses.activate
+    def test_fetches_all_pages(self, adapter):
+        responses.add(responses.GET, BASE_URL, body="<html></html>", status=200)
+        responses.add(
+            responses.POST,
+            BROWSE_URL,
+            json={"report_id": "rpt-123", "item_count": 60},
+            status=200,
+        )
+        # Page 1: 50 records
+        inner1 = "\n".join(
+            f'<div class="efxRecordRepeater"><a class="efxZoomShort-Vorgang">G{i}</a>'
+            f"<dl><dt>Vorgangs-ID:</dt><dd>V-{i:03d}</dd><dt>Vorgangstyp:</dt><dd>Gesetzgebung</dd></dl>"
+            f"</div>"
+            for i in range(50)
+        )
+        records_page1 = f"<html><body>{inner1}</body></html>"
+        # Page 2: 10 records
+        inner2 = "\n".join(
+            f'<div class="efxRecordRepeater"><a class="efxZoomShort-Vorgang">G{i}</a>'
+            f"<dl><dt>Vorgangs-ID:</dt><dd>V-{i:03d}</dd><dt>Vorgangstyp:</dt><dd>Gesetzgebung</dd></dl>"
+            f"</div>"
+            for i in range(50, 60)
+        )
+        records_page2 = f"<html><body>{inner2}</body></html>"
+        responses.add(responses.GET, REPORT_URL, body=records_page1, status=200)
+        responses.add(responses.GET, REPORT_URL, body=records_page2, status=200)
+
+        results = adapter.search("Gesetzgebung", date(2026, 1, 1), date(2026, 2, 1))
+
+        assert len(results) == 60
+        # Verify two GET requests to report URL (two pages)
+        report_calls = [c for c in responses.calls if REPORT_URL in c.request.url]
+        assert len(report_calls) == 2
+
+
+class TestEmptyResults:
+    @responses.activate
+    def test_zero_results_returns_empty_list(self, adapter):
+        responses.add(responses.GET, BASE_URL, body="<html></html>", status=200)
+        responses.add(
+            responses.POST,
+            BROWSE_URL,
+            json={"report_id": "", "item_count": 0},
+            status=200,
+        )
+
+        results = adapter.search("Gesetzgebung", date(2026, 1, 1), date(2026, 2, 1))
+        assert results == []
+
+
+class TestStatusRunning:
+    @responses.activate
+    def test_running_status_returns_empty_list(self, adapter):
+        responses.add(responses.GET, BASE_URL, body="<html></html>", status=200)
+        responses.add(
+            responses.POST,
+            BROWSE_URL,
+            json={
+                "report_id": "",
+                "item_count": 0,
+                "sources": {"Star": {"status": "running", "hits": "5000"}},
+            },
+            status=200,
+        )
+
+        results = adapter.search("Gesetzgebung", date(2026, 1, 1), date(2026, 2, 1))
+        assert results == []
+
+
+class TestGetDetail:
+    def test_get_detail_raises_not_implemented(self, adapter):
         with pytest.raises(NotImplementedError):
             adapter.get_detail("V-12345")
-
-    # todo: add tests for session management
-    # todo: add tests for search query construction
-    # todo: add tests for HTML parsing with mocked responses
-    # todo: add tests for Fundstellen parsing
-    # todo: add tests for pagination
-    # todo: add tests for date range subdivision
