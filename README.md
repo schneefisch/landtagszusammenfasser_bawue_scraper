@@ -1,0 +1,2 @@
+# landtagszusammenfasser_bawue_scraper
+Baden-Württembergisches Parlement Scraper für den Landtagszusammenfasser
