@@ -1,0 +1,18 @@
+# Test script output (saved HTML for analysis)
+scripts/output/
+
+# Cloned upstream repo (docker test backend)
+docker/landtagszusammenfasser/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# IDE
+.idea/
+.vscode/
+*.swp
