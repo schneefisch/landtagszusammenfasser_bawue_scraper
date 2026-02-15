@@ -201,6 +201,9 @@ Jeder Vorgang durchläuft mehrere Stationen.
 | **PARLIS Web-Oberfläche** | Web-Scraping | Fallback / für Daten die der JSON-Endpunkt nicht liefert |
 | **landtag-bw.de PDFs** | Download + Textextraktion | Für Volltexte der Drucksachen |
 | **ICS-Kalender** | Maschinenlesbar | Für Sitzungstermine |
+| **Beteiligungsportal** | Web-Scraping | Ergänzend — vorparlamentarische Entwürfe & Stellungnahmen |
+| **Kabinettsberichte (STM)** | Web-Scraping (Fließtext) | Optional — Signalquelle für neue Regierungsentwürfe |
+| **Gesetzblatt BaWue** | Web-Suche | Ergänzend — Verkündungen (postparlamentarisch) |
 
 ### 1. PARLIS — Undokumentierte JSON-API (Primärquelle)
 
@@ -288,6 +291,57 @@ Der Landtag bietet einen ICS-Kalender-Download für Sitzungstermine an. Dieses m
 | [dokukratie (OKF)](https://github.com/okfde/dokukratie) | Hoch (Referenz) | Funktionierender BW-Scraper, nutzt PARLIS JSON-Endpunkt |
 | Beteiligungsportal BaWue | Ergänzend | Gesetzentwürfe im Anhörungsverfahren |
 
+### 6. Staatsministerium & Regierungsquellen
+
+> **Fazit:** Die Quellen des Staatsministeriums (STM) eignen sich **nicht** als Ersatz für PARLIS, da sie keine strukturierten Gesetzgebungsdaten, keine maschinenlesbaren Schnittstellen und keine Drucksachennummern bieten. Zwei Quellen sind jedoch als **Ergänzung** wertvoll.
+
+**Untersuchte STM-Quellen:**
+
+| Quelle | URL | Bewertung |
+|--------|-----|-----------|
+| STM Aufgaben & Organisation | [stm.baden-wuerttemberg.de/.../aufgaben-und-organisation](https://stm.baden-wuerttemberg.de/de/ministerium/aufgaben-und-organisation) | Nur Organisationsinfos, keine Daten |
+| STM Gesetze & Verordnungen | [stm.baden-wuerttemberg.de/.../gesetze-und-verordnungen](https://stm.baden-wuerttemberg.de/de/service/gesetze-und-verordnungen) | Gateway-Seite zu Landesrecht BW und Gesetzblatt |
+| Landesrecht BW | [landesrecht-bw.de](https://www.landesrecht-bw.de) | JavaScript-App, keine erkennbare API |
+| RSS-Feeds BaWue | [baden-wuerttemberg.de/.../rss](https://www.baden-wuerttemberg.de/de/service/rss) | Themen-Feeds, keiner spezifisch für Gesetzgebung |
+
+#### 6a. Beteiligungsportal (ergänzend — vorparlamentarische Phase)
+
+**URL:** [beteiligungsportal.baden-wuerttemberg.de](https://beteiligungsportal.baden-wuerttemberg.de/de/mitmachen/lp-17)
+
+Das Beteiligungsportal deckt die **vorparlamentarische Phase** ab und enthält Informationen, die in PARLIS nicht verfügbar sind:
+
+- PDF-Downloads von Verordnungs- und Gesetzentwürfen vor der parlamentarischen Einbringung
+- 3-Phasen-Prozess: Kommentierung → Ministeriums-Antwort → Beschluss
+- Nachhaltigkeits- und Bürokratiebewertungen
+- Stellungnahmen von Verbänden und Bürgern
+
+**Einschränkungen:**
+- Nur ausgewählte Vorhaben (keine vollständige Abdeckung aller Gesetzentwürfe)
+- Kein maschinenlesbarer Zugang (HTML-Scraping erforderlich)
+
+**LTZF-Relevanz:** Stationstypen `preparl-regent` und `preparl-regbsl`
+
+#### 6b. Kabinettsberichte (optionale Signalquelle)
+
+**URL:** [stm.baden-wuerttemberg.de/.../kabinettsberichte](https://stm.baden-wuerttemberg.de/de/themen/regierungskoordination/kabinettsberichte)
+
+Wöchentliche Berichte über Kabinettsbeschlüsse. Können als **Trigger** dienen, um in PARLIS nach neuen Vorgängen zu suchen.
+
+**Einschränkungen:**
+- PR-Texte ohne strukturierte Daten (Fließtext)
+- Keine Drucksachennummern, keine Verknüpfung zu parlamentarischen Vorgängen
+- Keine Volltexte der Gesetzentwürfe
+
+**LTZF-Relevanz:** Kann Hinweise auf neue Vorgänge vom Typ `preparl-regbsl` liefern
+
+#### 6c. Gesetzblatt BaWue (postparlamentarische Phase)
+
+**URL:** [baden-wuerttemberg.de/.../gesetzblatt](https://www.baden-wuerttemberg.de/de/service/alle-meldungen/meldung/pid/gesetzblatt/)
+
+Enthält verkündete Gesetze nach der parlamentarischen Verabschiedung. Web-Suche verfügbar, aber keine API.
+
+**LTZF-Relevanz:** Stationstyp `postparl-gsblt` — Verkündung im Gesetzblatt
+
 ### Empfohlene Scraper-Strategie
 
 1. **PARLIS JSON-Endpunkt als Primärquelle** — weniger fragil als reines HTML-Scraping, liefert strukturierte Vorgangsdaten
@@ -295,15 +349,20 @@ Der Landtag bietet einen ICS-Kalender-Download für Sitzungstermine an. Dieses m
 3. **PDF-Download + Textextraktion** für Volltexte der Drucksachen
 4. **ICS-Kalender** für Sitzungstermine als ergänzende Quelle
 5. **dokukratie-Projekt als technische Referenz** — funktionierender BW-Scraper mit bekannten Query-Parametern
+6. **Beteiligungsportal** (optional) — für vorparlamentarische Entwürfe und Stellungnahmen, sofern in PARLIS nicht abgedeckt
+7. **Kabinettsberichte** (optional) — als Signalquelle für neue Regierungsentwürfe, Trigger für PARLIS-Abfragen
 
 ### Zu scrapen
 
-| Datenbereich | Quelle | LTZF-Modell |
-|--------------|--------|-------------|
-| Gesetzgebungsvorgänge | PARLIS JSON-Endpunkt + Detail-Seiten | `Vorgang` + `Station` |
-| Tagesordnungen | ICS-Kalender, Plenarsitzungen | `Sitzung` + `Top` |
-| Ausschussarbeit | PARLIS, Ausschussprotokolle | `Station` (typ: `parl-ausschber`) |
-| Dokumente | PDFs der Drucksachen (landtag-bw.de) | `Dokument` |
+| Datenbereich | Quelle | LTZF-Modell | Priorität |
+|--------------|--------|-------------|-----------|
+| Gesetzgebungsvorgänge | PARLIS JSON-Endpunkt + Detail-Seiten | `Vorgang` + `Station` | Primär |
+| Tagesordnungen | ICS-Kalender, Plenarsitzungen | `Sitzung` + `Top` | Primär |
+| Ausschussarbeit | PARLIS, Ausschussprotokolle | `Station` (typ: `parl-ausschber`) | Primär |
+| Dokumente | PDFs der Drucksachen (landtag-bw.de) | `Dokument` | Primär |
+| Vorparlamentarische Entwürfe | Beteiligungsportal | `Station` (typ: `preparl-regent`), `Dokument` (typ: `preparl-entwurf`) | Ergänzend |
+| Kabinettsbeschlüsse | Kabinettsberichte (STM) | Signal für neue `Vorgang`-Suche in PARLIS | Optional |
+| Gesetzblatt-Verkündungen | Gesetzblatt BaWue | `Station` (typ: `postparl-gsblt`) | Ergänzend |
 
 ## Konfiguration
 
