@@ -18,7 +18,8 @@
       "Bash(gh pr:*)",
       "Bash(pip install:*)",
       "Bash(pip-compile:*)",
-      "Bash(pip-audit:*)"
+      "Bash(pip-audit:*)",
+      "Bash(.venv/bin/python:*)"
     ]
   }
 }

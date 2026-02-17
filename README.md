@@ -1,7 +1,7 @@
 # BaWue Scraper
 
 [![CI](https://github.com/schneefisch/landtagszusammenfasser_bawue_scraper/actions/workflows/ci.yml/badge.svg)](https://github.com/schneefisch/landtagszusammenfasser_bawue_scraper/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/schneefisch/landtagszusammenfasser_bawue_scraper/graph/badge.svg)](https://codecov.io/gh/schneefisch/landtagszusammenfasser_bawue_scraper)
+![Coverage](https://raw.githubusercontent.com/schneefisch/landtagszusammenfasser_bawue_scraper/badges/badge-coverage.svg)
 
 Collector for the Baden-Württemberg state parliament ([Landtag BW](https://www.landtag-bw.de/)) as part of the [Landtagszusammenfasser](https://github.com/Chrystalkey/landtagszusammenfasser) (LTZF) platform. Scrapes legislative proceedings (Vorgänge), documents, and session calendars from the PARLIS system and delivers them to the LTZF backend via its REST API.
 

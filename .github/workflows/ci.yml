@@ -48,6 +48,8 @@ jobs:
   test:
     needs: [security-audit]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -68,10 +70,25 @@ jobs:
       - name: Run tests with coverage
         run: pytest --cov=bawue_scraper --cov-report=xml
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
-        with:
-          files: coverage.xml
+      - name: Generate coverage badge
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          pip install "genbadge[coverage]"
+          genbadge coverage -i coverage.xml -o badge-coverage.svg
+
+      - name: Push badge to badges branch
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin badges:badges 2>/dev/null || git checkout --orphan badges
+          git checkout badges
+          mkdir -p /tmp/badges && cp badge-coverage.svg /tmp/badges/
+          git rm -rf . 2>/dev/null || true
+          cp /tmp/badges/badge-coverage.svg .
+          git add badge-coverage.svg
+          git diff --cached --quiet || git commit -m "Update coverage badge"
+          git push origin badges
 
   docker:
     needs: [security-audit]
