@@ -6,6 +6,7 @@ import pytest
 import responses
 
 from bawue_scraper.adapters.ltzf_client import LtzfClient
+from bawue_scraper.config import Config
 
 
 class TestLtzfClientSubmitVorgang:
@@ -94,6 +95,35 @@ class TestLtzfClientSubmitVorgang:
         assert "Connection refused" in caplog.text
         # Should NOT contain a full traceback
         assert "Traceback" not in caplog.text
+
+
+class TestLtzfClientRedirectPolicy:
+    def test_redirects_disabled_by_default(self, config):
+        """Default config should set max_redirects=0 to prevent API key leakage."""
+        client = LtzfClient(config)
+        assert client._session.max_redirects == 0
+
+    def test_redirects_enabled_when_configured(self, config, monkeypatch):
+        """When ltzf_allow_redirects=True, session keeps default max_redirects."""
+        monkeypatch.setenv("LTZF_ALLOW_REDIRECTS", "true")
+        cfg = Config()
+        client = LtzfClient(cfg)
+        assert client._session.max_redirects > 0
+
+    @responses.activate
+    def test_redirect_response_returns_false(self, config, sample_vorgang, caplog):
+        """A redirect response should result in a TooManyRedirects error and return False."""
+        responses.put(
+            "http://localhost:8080/api/v2/vorgang",
+            status=301,
+            headers={"Location": "http://evil.example.com/api/v2/vorgang"},
+        )
+        client = LtzfClient(config)
+
+        with caplog.at_level(logging.ERROR):
+            result = client.submit_vorgang(sample_vorgang)
+
+        assert result is False
 
 
 class TestLtzfClientSubmitSitzungen:

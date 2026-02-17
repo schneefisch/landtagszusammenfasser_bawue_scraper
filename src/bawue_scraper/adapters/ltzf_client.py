@@ -25,6 +25,8 @@ class LtzfClient(LtzfApi):
                 "Content-Type": "application/json",
             }
         )
+        if not config.ltzf_allow_redirects:
+            self._session.max_redirects = 0
 
     def submit_vorgang(self, vorgang: Vorgang) -> bool:
         """Submit a Vorgang via PUT /api/v2/vorgang."""
