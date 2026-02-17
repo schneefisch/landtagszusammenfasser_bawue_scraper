@@ -73,7 +73,7 @@ Orchestrator (pipeline coordinator)
 ## Configuration
 
 Environment variables (see `.env.example`). Key required vars: `LTZF_API_URL`, `LTZF_API_KEY`, `COLLECTOR_ID`. Optional:
-`OPENAI_API_KEY` (enables LLM PDF extraction), `PARLIS_REQUEST_DELAY_S`, `CACHE_DIR`, `WAHLPERIODE`.
+`PARLIS_REQUEST_DELAY_S`, `CACHE_DIR`, `WAHLPERIODE`.
 
 ## Testing Conventions
 

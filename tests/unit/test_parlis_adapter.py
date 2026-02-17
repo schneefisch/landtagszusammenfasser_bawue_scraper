@@ -50,8 +50,9 @@ SAMPLE_HTML_TWO_RECORDS = """<html><body>
 
 
 @pytest.fixture()
-def adapter(config):
-    """Create a ParlisAdapter without establishing a session."""
+def adapter(config, monkeypatch):
+    """Create a ParlisAdapter with zero request delay for fast tests."""
+    monkeypatch.setattr(config, "parlis_request_delay_s", 0.0)
     return ParlisAdapter(config)
 
 
@@ -144,7 +145,7 @@ class TestResultParsing:
         assert len(results) == 1
         vorgang = results[0]
         assert vorgang["titel"] == "Gesetz zur Änderung des Landeshochschulgesetzes"
-        assert vorgang["Vorgangs-ID"] == "V-12345"
+        assert vorgang["vorgangs_id"] == "V-12345"
         assert vorgang["Initiative"] == "Fraktion GRÜNE"
         assert len(vorgang["fundstellen_parsed"]) == 3
 

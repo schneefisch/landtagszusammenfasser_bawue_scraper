@@ -244,13 +244,13 @@ def parse_vorgang_results(html_content: str) -> list[dict]:
                 parsed["pdf_url"] = href
                 item["fundstellen_parsed"].append(parsed)
 
-        # Extract Vorgangs-ID from the JS block as fallback
+        # Extract vorgangs_id from the JS block as fallback
         scripts = record.xpath(".//script")
         for script in scripts:
             script_text = script.text_content()
             vid_match = re.search(r"link-(V-\d+)", script_text)
-            if vid_match and "Vorgangs-ID" not in item:
-                item["Vorgangs-ID"] = vid_match.group(1)
+            if vid_match and "vorgangs_id" not in item:
+                item["vorgangs_id"] = vid_match.group(1)
 
         # Also extract the detail URL pattern from JS
         url_match = None
@@ -329,7 +329,7 @@ def test_gesetzgebung_search(session: requests.Session) -> list[dict]:
     # Show detailed Fundstellen for one complete Vorgang (one with most stations)
     most_stations = max(results, key=lambda r: len(r.get("fundstellen_parsed", [])))
     print(f"\n  --- Most Complete Vorgang: {most_stations.get('titel', '?')[:70]} ---")
-    print(f"  Vorgangs-ID: {most_stations.get('Vorgangs-ID', '?')}")
+    print(f"  vorgangs_id: {most_stations.get('vorgangs_id', '?')}")
     print(f"  Aktueller Stand: {most_stations.get('Aktueller Stand', '?')}")
     print(f"  Initiative: {most_stations.get('Initiative', '?')}")
     print(f"  Stations ({len(most_stations.get('fundstellen_parsed', []))}):")
@@ -354,7 +354,7 @@ def test_gesetzgebung_search(session: requests.Session) -> list[dict]:
         "Vorgang.verfassungsaendernd": False,  # Not in data
         "Vorgang.initiatoren": bool(most_stations.get("Initiative")),
         "Vorgang.stationen": bool(most_stations.get("fundstellen_parsed")),
-        "Vorgang.ids (Vorgangs-ID)": bool(most_stations.get("Vorgangs-ID")),
+        "Vorgang.ids (vorgangs_id)": bool(most_stations.get("vorgangs_id")),
         "Station.typ": bool(all_station_types),
         "Station.datum": any(f.get("datum") for f in most_stations.get("fundstellen_parsed", [])),
         "Station.gremium (Ausschuss)": bool(all_committees),
@@ -382,13 +382,13 @@ def test_vorgang_detail_via_search(session: requests.Session, results: list[dict
     # Instead, let's try a very specific search to get a single Vorgang with max detail.
     vorgangs_id = None
     for r in results:
-        vid = r.get("Vorgangs-ID", "")
+        vid = r.get("vorgangs_id", "")
         if vid:
             vorgangs_id = vid
             break
 
     if not vorgangs_id:
-        log.error("No Vorgangs-ID found")
+        log.error("No vorgangs_id found")
         return
 
     print(f"\n  Attempting to access detail for: {vorgangs_id}")

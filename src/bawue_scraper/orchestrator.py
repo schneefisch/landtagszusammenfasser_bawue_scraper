@@ -7,50 +7,17 @@ from uuid import NAMESPACE_URL, uuid5
 from bawue_scraper.config import Config
 from bawue_scraper.domain.enums import Stationstyp
 from bawue_scraper.domain.models import Autor, Dokument, Gremium, Station, Vorgang
-from bawue_scraper.mapping.enum_mapper import map_dokumententyp, map_stationstyp, map_vorgangstyp
+from bawue_scraper.mapping.enum_mapper import VORGANGSTYP_MAP, map_dokumententyp, map_stationstyp, map_vorgangstyp
 from bawue_scraper.ports.cache import Cache
 from bawue_scraper.ports.calendar_source import CalendarSource
 from bawue_scraper.ports.document_extractor import DocumentExtractor
 from bawue_scraper.ports.ltzf_api import LtzfApi
-from bawue_scraper.ports.vorgang_source import VorgangSource
+from bawue_scraper.ports.vorgang_source import RawFundstelle, RawVorgang, VorgangSource
 
 logger = logging.getLogger(__name__)
 
-# Default Vorgangstypen to scrape — all types available in PARLIS
-DEFAULT_VORGANGSTYPEN = [
-    "Gesetzgebung",
-    "Haushaltsgesetzgebung",
-    "Volksantrag",
-    "Antrag",
-    "Antrag der Landesregierung/eines Ministeriums",
-    "Antrag des Rechnungshofs",
-    "Kleine Anfrage",
-    "Große Anfrage",
-    "Mündliche Anfrage",
-    "Aktuelle Debatte",
-    "Anmerkung zur Plenarsitzung",
-    "Ansprache/Erklärung/Mitteilung",
-    "Bericht des Parlamentarischen Kontrollgremiums",
-    "Besetzung externer Gremien",
-    "Besetzung interner Gremien",
-    "Enquetekommission",
-    "EU-Vorlage",
-    "Geschäftsordnung",
-    "Immunitätsangelegenheit",
-    "Mitteilung der Landesregierung/eines Ministeriums",
-    "Mitteilung des Bürgerbeauftragten",
-    "Mitteilung des Landesbeauftragten für den Datenschutz",
-    "Mitteilung des Präsidenten",
-    "Mitteilung des Rechnungshofs",
-    "Petitionen",
-    "Regierungsbefragung",
-    "Regierungserklärung/Regierungsinformation",
-    "Schreiben des Bundesverfassungsgerichts",
-    "Schreiben des Verfassungsgerichtshofs",
-    "Untersuchungsausschuss",
-    "Wahl im Landtag",
-    "Wahlprüfung",
-]
+# Default Vorgangstypen to scrape — derived from the canonical VORGANGSTYP_MAP
+DEFAULT_VORGANGSTYPEN: list[str] = list(VORGANGSTYP_MAP.keys())
 
 
 class Orchestrator:
@@ -114,7 +81,7 @@ class Orchestrator:
 
             for raw in raw_vorgaenge:
                 total += 1
-                vorgang_id = raw.get("Vorgangs-ID", "unknown")
+                vorgang_id = raw.get("vorgangs_id", "unknown")
 
                 if self._cache.is_processed(vorgang_id):
                     skipped += 1
@@ -130,7 +97,7 @@ class Orchestrator:
                     else:
                         errors += 1
                         logger.warning("Failed to submit Vorgang %s", vorgang_id)
-                except Exception:
+                except Exception:  # intentional: single Vorgang failure must not stop the pipeline
                     errors += 1
                     logger.error("Error processing Vorgang %s", vorgang_id, exc_info=True)
 
@@ -146,9 +113,9 @@ class Orchestrator:
         """Scrape and submit calendar/session data only."""
         raise NotImplementedError("Calendar pipeline not yet implemented.")
 
-    def _build_vorgang(self, raw: dict) -> Vorgang:
+    def _build_vorgang(self, raw: RawVorgang) -> Vorgang:
         """Convert a raw PARLIS dict into a domain Vorgang model."""
-        vorgang_id = raw.get("Vorgangs-ID", "unknown")
+        vorgang_id = raw.get("vorgangs_id", "unknown")
         titel = raw.get("titel", "")
         initiative = raw.get("Initiative", "")
         vorgangstyp_str = raw.get("Vorgangstyp", "")
@@ -173,7 +140,7 @@ class Orchestrator:
             ids=[vorgang_id],
         )
 
-    def _build_station(self, fund: dict, initiative: str) -> Station:
+    def _build_station(self, fund: RawFundstelle, initiative: str) -> Station:
         """Convert a parsed Fundstelle dict into a domain Station."""
         station_typ_str = fund.get("station_typ", "")
         station_typ = map_stationstyp(station_typ_str, initiator=initiative)

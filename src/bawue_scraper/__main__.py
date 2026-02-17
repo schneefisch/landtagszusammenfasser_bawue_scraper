@@ -57,7 +57,7 @@ def main(argv: list[str] | None = None) -> None:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    config = Config()  # type: ignore[call-arg]
+    config = Config()  # type: ignore[call-arg]  # pydantic-settings populates fields from env
 
     log_level = args.log_level or config.log_level
     logging.basicConfig(

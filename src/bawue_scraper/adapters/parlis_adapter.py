@@ -10,7 +10,7 @@ import requests
 from lxml import html
 
 from bawue_scraper.config import Config
-from bawue_scraper.ports.vorgang_source import VorgangSource
+from bawue_scraper.ports.vorgang_source import RawVorgang, VorgangSource
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +107,7 @@ class ParlisAdapter(VorgangSource):
         return result
 
     @staticmethod
-    def _parse_results(html_content: str) -> list[dict]:
+    def _parse_results(html_content: str) -> list[RawVorgang]:
         """Parse Vorgang results from PARLIS HTML response."""
         tree = html.fromstring(html_content)
         records = tree.xpath('.//div[contains(@class, "efxRecordRepeater")]')
@@ -123,6 +123,8 @@ class ParlisAdapter(VorgangSource):
             dts = record.xpath(".//dl/dt")
             for dt in dts:
                 label = dt.text_content().strip().rstrip(":")
+                if label == "Vorgangs-ID":
+                    label = "vorgangs_id"
                 dd = dt.getnext()
                 if dd is not None:
                     item[label] = dd.text_content().strip()
@@ -141,8 +143,8 @@ class ParlisAdapter(VorgangSource):
             for script in scripts:
                 script_text = script.text_content()
                 vid_match = re.search(r"link-(V-\d+)", script_text)
-                if vid_match and "Vorgangs-ID" not in item:
-                    item["Vorgangs-ID"] = vid_match.group(1)
+                if vid_match and "vorgangs_id" not in item:
+                    item["vorgangs_id"] = vid_match.group(1)
 
             url_match = None
             for script in scripts:
@@ -172,7 +174,7 @@ class ParlisAdapter(VorgangSource):
             current = date(current.year + 1, 1, 1) if current.month == 12 else date(current.year, current.month + 1, 1)
         return windows
 
-    def _search_single(self, vorgangstyp: str, date_from: date, date_to: date) -> list[dict] | None:
+    def _search_single(self, vorgangstyp: str, date_from: date, date_to: date) -> list[RawVorgang] | None:
         """Execute a single search against PARLIS.
 
         Returns:
@@ -213,7 +215,7 @@ class ParlisAdapter(VorgangSource):
         if item_count == 0:
             return []
 
-        all_results: list[dict] = []
+        all_results: list[RawVorgang] = []
         for start in range(0, item_count, CHUNKSIZE):
             if start > 0:
                 time.sleep(self._config.parlis_request_delay_s)
@@ -224,7 +226,7 @@ class ParlisAdapter(VorgangSource):
 
         return all_results
 
-    def search(self, vorgangstyp: str, date_from: date, date_to: date) -> list[dict]:
+    def search(self, vorgangstyp: str, date_from: date, date_to: date) -> list[RawVorgang]:
         """Search PARLIS for Vorgänge matching the given criteria.
 
         If PARLIS indicates the result set is too large (status=running), automatically
@@ -236,7 +238,7 @@ class ParlisAdapter(VorgangSource):
             return results
 
         # Subdivide into monthly windows
-        all_results: list[dict] = []
+        all_results: list[RawVorgang] = []
         for window_from, window_to in self._monthly_windows(date_from, date_to):
             time.sleep(self._config.parlis_request_delay_s)
             window_results = self._search_single(vorgangstyp, window_from, window_to)
@@ -251,6 +253,6 @@ class ParlisAdapter(VorgangSource):
 
         return all_results
 
-    def get_detail(self, vorgang_id: str) -> dict:
+    def get_detail(self, vorgang_id: str) -> RawVorgang:
         """Fetch detailed data for a single Vorgang from PARLIS."""
         raise NotImplementedError("Detail pages are SPA-routed; not implemented yet.")

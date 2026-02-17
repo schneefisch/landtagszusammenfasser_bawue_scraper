@@ -21,7 +21,6 @@ class Config(BaseSettings):
     # Optional
     ltzf_allow_redirects: bool = False
     ltzf_mode: Literal["dry-run", "live"] = "dry-run"
-    openai_api_key: str | None = None
     scrape_interval_hours: int = 24
     scrape_lookback_days: int = 7
     parlis_request_delay_s: float = 1.0

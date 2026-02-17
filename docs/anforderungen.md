@@ -373,7 +373,7 @@ Der Scraper benötigt folgende Konfiguration (analog zum bestehenden Collector):
 | `LTZF_API_URL` | URL des LTZF-Backends | Ja |
 | `LTZF_API_KEY` | API-Key (Scope: collector) | Ja |
 | `COLLECTOR_ID` | Eindeutige Collector-ID | Ja |
-| `OPENAI_API_KEY` | Für Textextraktion aus PDFs | Optional |
+
 
 ## Referenz: Bestehender Bayern-Scraper
 

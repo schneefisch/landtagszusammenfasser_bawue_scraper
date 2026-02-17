@@ -5,7 +5,7 @@ from bawue_scraper.ports.document_extractor import DocumentExtractor, Extraction
 
 
 class PdfExtractor(DocumentExtractor):
-    """Implements DocumentExtractor using pdfplumber with OCR and LLM fallbacks."""
+    """Implements DocumentExtractor using pdfplumber with OCR fallback."""
 
     def __init__(self, config: Config) -> None:
         self._config = config
@@ -16,11 +16,11 @@ class PdfExtractor(DocumentExtractor):
         Extraction waterfall:
         1. pdfplumber (fast, no external deps)
         2. pytesseract OCR (for scanned documents)
-        3. OpenAI API (optional, for difficult documents)
+        3. LLM extraction (optional, for difficult documents — not yet implemented)
         """
         # todo: download PDF from url
         # todo: compute SHA-256 hash of PDF binary
         # todo: try pdfplumber extraction
         # todo: if text too short, try OCR via pytesseract
-        # todo: if still insufficient and openai_api_key configured, try LLM extraction
+        # todo: if still insufficient, try LLM extraction
         raise NotImplementedError

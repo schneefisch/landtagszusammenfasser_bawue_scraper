@@ -18,7 +18,6 @@ class TestConfig:
         assert config.log_level == "INFO"
         assert config.cache_dir == "./cache"
         assert config.wahlperiode == 17
-        assert config.openai_api_key is None
 
     def test_ltzf_mode_defaults_to_dry_run(self, config):
         assert config.ltzf_mode == "dry-run"

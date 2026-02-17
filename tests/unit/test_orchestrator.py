@@ -25,7 +25,7 @@ def _make_raw_vorgang(vid: str, titel: str = "Test Gesetz", vorgangstyp: str = "
     """Create a minimal raw Vorgang dict as returned by ParlisAdapter."""
     return {
         "titel": titel,
-        "Vorgangs-ID": vid,
+        "vorgangs_id": vid,
         "Vorgangstyp": vorgangstyp,
         "Initiative": "Fraktion GRÜNE",
         "fundstellen_parsed": [
