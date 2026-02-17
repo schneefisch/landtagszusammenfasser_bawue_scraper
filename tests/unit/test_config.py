@@ -1,6 +1,5 @@
 """Tests for configuration loading."""
 
-
 from bawue_scraper.config import Config
 
 

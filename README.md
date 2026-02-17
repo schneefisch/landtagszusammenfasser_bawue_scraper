@@ -1,5 +1,8 @@
 # BaWue Scraper
 
+[![CI](https://github.com/schneefisch/landtagszusammenfasser_bawue_scraper/actions/workflows/ci.yml/badge.svg)](https://github.com/schneefisch/landtagszusammenfasser_bawue_scraper/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/schneefisch/landtagszusammenfasser_bawue_scraper/graph/badge.svg)](https://codecov.io/gh/schneefisch/landtagszusammenfasser_bawue_scraper)
+
 Collector for the Baden-Württemberg state parliament ([Landtag BW](https://www.landtag-bw.de/)) as part of the [Landtagszusammenfasser](https://github.com/Chrystalkey/landtagszusammenfasser) (LTZF) platform. Scrapes legislative proceedings (Vorgänge), documents, and session calendars from the PARLIS system and delivers them to the LTZF backend via its REST API.
 
 ## Prerequisites
@@ -146,9 +149,15 @@ The scraper follows a **hexagonal (ports & adapters)** architecture. The domain 
 
 ## Links
 
+### Parlamentszusammenfasser (GitHub Org)
+
+* [GitHub Organization](https://github.com/Parlamentszusammenfasser)
+* [collector-core](https://github.com/Parlamentszusammenfasser/collector-core) — Core library for collecting parliamentary data
+* [parlamentsspiegel-docu](https://github.com/Parlamentszusammenfasser/parlamentsspiegel-docu) — Search parameter documentation for Parlamentsspiegel
+
 ### General
 
-* [Landtagszusammenfasser](https://github.com/Chrystalkey/landtagszusammenfasser)
+* [Landtagszusammenfasser (original repo)](https://github.com/Chrystalkey/landtagszusammenfasser)
 * [Bundestagszusammenfasser](https://bundestagszusammenfasser.de/)
 * [Landtag BaWue](https://www.landtag-bw.de/)
 
