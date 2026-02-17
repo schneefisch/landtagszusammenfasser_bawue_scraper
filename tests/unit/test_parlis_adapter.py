@@ -364,6 +364,44 @@ class TestDateSubdivision:
         assert len(post_calls) == 4
 
 
+class TestSessionEstablishment:
+    @responses.activate
+    def test_session_established_once_even_with_subdivision(self, adapter):
+        """_establish_session should be called once per search(), not per sub-window."""
+        # Initial search: running → triggers subdivision
+        responses.add(responses.GET, BASE_URL, body="<html></html>", status=200)
+        responses.add(
+            responses.POST,
+            BROWSE_URL,
+            json={
+                "report_id": "",
+                "item_count": 0,
+                "sources": {"Star": {"status": "running", "hits": "5000"}},
+            },
+            status=200,
+        )
+        # Sub-window 1 (Jan): search returns empty (no session GET needed)
+        responses.add(
+            responses.POST,
+            BROWSE_URL,
+            json={"report_id": "", "item_count": 0},
+            status=200,
+        )
+        # Sub-window 2 (Feb): search returns empty (no session GET needed)
+        responses.add(
+            responses.POST,
+            BROWSE_URL,
+            json={"report_id": "", "item_count": 0},
+            status=200,
+        )
+
+        adapter.search("Kleine Anfrage", date(2026, 1, 1), date(2026, 2, 28))
+
+        # Only 1 GET to BASE_URL (session establishment), not 3
+        session_calls = [c for c in responses.calls if c.request.method == "GET" and c.request.url == BASE_URL]
+        assert len(session_calls) == 1
+
+
 class TestGetDetail:
     def test_get_detail_raises_not_implemented(self, adapter):
         with pytest.raises(NotImplementedError):

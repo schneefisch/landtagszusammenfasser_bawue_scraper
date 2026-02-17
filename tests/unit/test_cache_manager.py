@@ -86,3 +86,17 @@ class TestCacheManager:
 
         data = json.loads((Path(cache_config.cache_dir) / "processed.json").read_text())
         assert set(data) == {"V-001", "V-002"}
+
+    def test_save_uses_atomic_write(self, cache_config, monkeypatch):
+        """Verify _save() writes to a temp file then atomically replaces."""
+        import os
+        from unittest.mock import patch
+
+        cache = CacheManager(cache_config)
+
+        with patch("bawue_scraper.adapters.cache_manager.os.replace", wraps=os.replace) as mock_replace:
+            cache.mark_processed("V-001")
+            mock_replace.assert_called_once()
+            # The target should be the cache file path
+            target = mock_replace.call_args[0][1]
+            assert str(target) == str(cache._cache_file)

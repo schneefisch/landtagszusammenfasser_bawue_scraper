@@ -1,5 +1,8 @@
 """Tests for configuration loading."""
 
+import pytest
+from pydantic import ValidationError
+
 from bawue_scraper.config import Config
 
 
@@ -27,6 +30,25 @@ class TestConfig:
         monkeypatch.setenv("LTZF_MODE", "live")
         cfg = Config()
         assert cfg.ltzf_mode == "live"
+
+    def test_ltzf_mode_rejects_invalid_value(self, monkeypatch):
+        monkeypatch.setenv("LTZF_API_URL", "http://localhost:8080")
+        monkeypatch.setenv("LTZF_API_KEY", "test-api-key")
+        monkeypatch.setenv("COLLECTOR_ID", "test-collector")
+        monkeypatch.setenv("LTZF_MODE", "invalid-mode")
+        with pytest.raises(ValidationError):
+            Config()
+
+    def test_scrape_lookback_days_defaults_to_7(self, config):
+        assert config.scrape_lookback_days == 7
+
+    def test_scrape_lookback_days_from_env(self, monkeypatch):
+        monkeypatch.setenv("LTZF_API_URL", "http://localhost:8080")
+        monkeypatch.setenv("LTZF_API_KEY", "test-api-key")
+        monkeypatch.setenv("COLLECTOR_ID", "test-collector")
+        monkeypatch.setenv("SCRAPE_LOOKBACK_DAYS", "30")
+        cfg = Config()
+        assert cfg.scrape_lookback_days == 30
 
     def test_custom_values(self, monkeypatch):
         monkeypatch.setenv("LTZF_API_URL", "https://api.example.com")

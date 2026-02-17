@@ -2,7 +2,7 @@
 
 import argparse
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from bawue_scraper.adapters.cache_manager import CacheManager
 from bawue_scraper.adapters.ics_adapter import IcsAdapter
@@ -101,7 +101,7 @@ def main(argv: list[str] | None = None) -> None:
     elif args.vorgaenge_only:
         orchestrator.run_vorgaenge(
             vorgangstypen=overrides.get("vorgangstypen", DEFAULT_VORGANGSTYPEN),
-            date_from=overrides.get("date_from", date(2026, 1, 1)),
+            date_from=overrides.get("date_from", date.today() - timedelta(days=config.scrape_lookback_days)),
             date_to=overrides.get("date_to", date.today()),
         )
     else:

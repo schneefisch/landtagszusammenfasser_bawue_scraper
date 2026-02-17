@@ -1,7 +1,7 @@
 """Pipeline orchestrator: coordinates the scraping workflow via ports."""
 
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from uuid import NAMESPACE_URL, uuid5
 
 from bawue_scraper.config import Config
@@ -88,7 +88,7 @@ class Orchestrator:
         """
         self.run_vorgaenge(
             vorgangstypen=vorgangstypen or DEFAULT_VORGANGSTYPEN,
-            date_from=date_from or date(2026, 1, 1),
+            date_from=date_from or date.today() - timedelta(days=self._config.scrape_lookback_days),
             date_to=date_to or date.today(),
         )
         try:

@@ -178,8 +178,6 @@ class ParlisAdapter(VorgangSource):
         Returns:
             A list of results, or None if the search was too large (status=running).
         """
-        self._establish_session()
-
         query = self._build_query(vorgangstyp, date_from, date_to)
         logger.info(
             "Searching PARLIS: WP=%s, type=%s, dates=%s-%s",
@@ -232,6 +230,7 @@ class ParlisAdapter(VorgangSource):
         If PARLIS indicates the result set is too large (status=running), automatically
         subdivides the date range into monthly windows and retries.
         """
+        self._establish_session()
         results = self._search_single(vorgangstyp, date_from, date_to)
         if results is not None:
             return results

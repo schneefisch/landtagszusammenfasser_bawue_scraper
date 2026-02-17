@@ -8,9 +8,11 @@ RUN apt-get update \
 
 WORKDIR /app
 
+COPY requirements.lock .
 COPY pyproject.toml .
 COPY src/ src/
 
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir --require-hashes -r requirements.lock \
+    && pip install --no-cache-dir --no-deps .
 
 ENTRYPOINT ["python", "-m", "bawue_scraper"]

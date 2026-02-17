@@ -1,7 +1,8 @@
 """Tests for the pipeline orchestrator."""
 
 import logging
-from datetime import date
+from datetime import date, timedelta
+from unittest.mock import patch
 
 import pytest
 
@@ -248,6 +249,22 @@ class TestRun:
         orchestrator.run()
 
         assert mock_vorgang_source.search.call_count == len(DEFAULT_VORGANGSTYPEN)
+
+    @patch("bawue_scraper.orchestrator.date")
+    def test_run_default_date_from_uses_lookback(
+        self, mock_date, orchestrator, mock_vorgang_source, mock_cache, config
+    ):
+        fake_today = date(2026, 2, 17)
+        mock_date.today.return_value = fake_today
+        mock_date.side_effect = lambda *args, **kwargs: date(*args, **kwargs)
+        mock_vorgang_source.search.return_value = []
+
+        orchestrator.run(vorgangstypen=["Gesetzgebung"])
+
+        call_args = mock_vorgang_source.search.call_args
+        expected_from = fake_today - timedelta(days=config.scrape_lookback_days)
+        assert call_args[0][1] == expected_from
+        assert call_args[0][2] == fake_today
 
 
 class TestBuildVorgang:

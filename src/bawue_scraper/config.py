@@ -1,5 +1,7 @@
 """Application configuration loaded from environment variables."""
 
+from typing import Literal
+
 from pydantic_settings import BaseSettings
 
 
@@ -17,9 +19,10 @@ class Config(BaseSettings):
     collector_id: str = "bawue-scraper"
 
     # Optional
-    ltzf_mode: str = "dry-run"  # "dry-run" (default, logs only) or "live" (HTTP calls)
+    ltzf_mode: Literal["dry-run", "live"] = "dry-run"
     openai_api_key: str | None = None
     scrape_interval_hours: int = 24
+    scrape_lookback_days: int = 7
     parlis_request_delay_s: float = 1.0
     log_level: str = "INFO"
     cache_dir: str = "./cache"

@@ -2,6 +2,8 @@
 
 import json
 import logging
+import os
+import tempfile
 from pathlib import Path
 
 from bawue_scraper.config import Config
@@ -34,10 +36,15 @@ class CacheManager(Cache):
             return set()
 
     def _save(self) -> None:
-        self._cache_file.write_text(
-            json.dumps(sorted(self._processed), ensure_ascii=False),
-            encoding="utf-8",
-        )
+        data = json.dumps(sorted(self._processed), ensure_ascii=False)
+        fd, tmp_path = tempfile.mkstemp(dir=self._cache_dir, suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(data)
+            os.replace(tmp_path, self._cache_file)
+        except BaseException:
+            os.unlink(tmp_path)
+            raise
 
     def is_processed(self, vorgang_id: str) -> bool:
         """Check if a Vorgang has already been processed."""

@@ -109,7 +109,7 @@ class TestMainWiresArgs:
     def test_vorgaenge_only_with_type_passes_args(
         self, mock_config_cls, mock_parlis, mock_pdf, mock_ics, mock_ltzf, mock_cache, mock_orch_cls
     ):
-        mock_config_cls.return_value = MagicMock(log_level="INFO", ltzf_mode="dry-run")
+        mock_config_cls.return_value = MagicMock(log_level="INFO", ltzf_mode="dry-run", scrape_lookback_days=7)
         mock_orch = MagicMock()
         mock_orch_cls.return_value = mock_orch
 
