@@ -47,7 +47,7 @@ graph LR
 | `pdfplumber` | PDF text extraction (primary) |
 | `pytesseract` / `Pillow` | OCR fallback for scanned PDFs |
 | `icalendar` | ICS calendar parsing |
-| `openai` | Optional: LLM-based text extraction for difficult PDFs |
+| *(LLM library)* | Optional: LLM-based text extraction for difficult PDFs (not yet implemented) |
 | `pydantic` | Domain model validation |
 
 **Build & packaging:** Poetry or pip with `pyproject.toml`.
@@ -295,7 +295,7 @@ flowchart TD
     B -->|text length > threshold| C[Return text]
     B -->|empty or too short| D{OCR via<br/>Tesseract}
     D -->|text length > threshold| C
-    D -->|still insufficient| E{OpenAI API<br/>configured?}
+    D -->|still insufficient| E{LLM<br/>configured?}
     E -->|yes| F[LLM extraction]
     E -->|no| G[Log warning,<br/>return partial text]
     F --> C
@@ -305,7 +305,7 @@ flowchart TD
 |-------|------|------|
 | 1. Direct extraction | `pdfplumber` | Always tried first — fast, no external dependencies |
 | 2. OCR fallback | `pytesseract` + `Pillow` | When pdfplumber returns empty/minimal text (scanned docs) |
-| 3. LLM extraction | OpenAI API | Optional, when OCR also fails (handwritten, poor quality) |
+| 3. LLM extraction | LLM API (not yet implemented) | Optional, when OCR also fails (handwritten, poor quality) |
 
 Each extracted document gets a SHA-256 hash computed from the PDF binary for the `Dokument.hash` field.
 
@@ -410,7 +410,6 @@ Dockerfile
 | `LTZF_API_URL` | Yes | LTZF backend base URL |
 | `LTZF_API_KEY` | Yes | API key (scope: collector) |
 | `COLLECTOR_ID` | Yes | Unique identifier for this collector instance |
-| `OPENAI_API_KEY` | No | Enables LLM-based PDF extraction fallback |
 | `SCRAPE_INTERVAL_HOURS` | No | Interval between scraping cycles (daemon mode, default: 24) |
 | `PARLIS_REQUEST_DELAY_S` | No | Delay between PARLIS requests (default: 1.0) |
 | `LOG_LEVEL` | No | Logging level (default: INFO) |

@@ -1,0 +1,17 @@
+.git/
+.idea/
+.vscode/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+.env
+cache/
+tests/
+docs/
+scripts/output/
+docker/
+*.md
+LICENSE
