@@ -81,11 +81,14 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin badges:badges 2>/dev/null || git checkout --orphan badges
-          git checkout badges
-          mkdir -p /tmp/badges && cp badge-coverage.svg /tmp/badges/
-          git rm -rf . 2>/dev/null || true
-          cp /tmp/badges/badge-coverage.svg .
+          cp badge-coverage.svg /tmp/badge-coverage.svg
+          if git fetch origin badges:badges 2>/dev/null; then
+            git checkout badges
+          else
+            git checkout --orphan badges
+            git rm -rf . 2>/dev/null || true
+          fi
+          cp /tmp/badge-coverage.svg .
           git add badge-coverage.svg
           git diff --cached --quiet || git commit -m "Update coverage badge"
           git push origin badges
