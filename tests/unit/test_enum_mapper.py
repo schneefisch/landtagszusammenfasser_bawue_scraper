@@ -1,5 +1,7 @@
 """Tests for the PARLIS→LTZF enum mapper."""
 
+import pytest
+
 from bawue_scraper.domain.enums import Dokumententyp, Stationstyp, Vorgangstyp
 from bawue_scraper.mapping.enum_mapper import (
     DOKUMENTENTYP_MAP,
@@ -12,168 +14,89 @@ from bawue_scraper.mapping.enum_mapper import (
 
 
 class TestVorgangstypMapping:
-    def test_gesetzgebung_maps_to_gg_land_parl(self):
-        assert map_vorgangstyp("Gesetzgebung") == Vorgangstyp.GG_LAND_PARL
+    @pytest.mark.parametrize(
+        "parlis_typ,expected",
+        [
+            ("Gesetzgebung", Vorgangstyp.GG_LAND_PARL),
+            ("Haushaltsgesetzgebung", Vorgangstyp.GG_LAND_PARL),
+            ("Volksantrag", Vorgangstyp.GG_LAND_PARL),
+            ("Antrag", Vorgangstyp.SONSTIG),
+            ("Antrag der Landesregierung/eines Ministeriums", Vorgangstyp.SONSTIG),
+            ("Antrag des Rechnungshofs", Vorgangstyp.SONSTIG),
+            ("Kleine Anfrage", Vorgangstyp.SONSTIG),
+            ("Große Anfrage", Vorgangstyp.SONSTIG),
+            ("Mündliche Anfrage", Vorgangstyp.SONSTIG),
+            ("Aktuelle Debatte", Vorgangstyp.SONSTIG),
+            ("Anmerkung zur Plenarsitzung", Vorgangstyp.SONSTIG),
+            ("Ansprache/Erklärung/Mitteilung", Vorgangstyp.SONSTIG),
+            ("Bericht des Parlamentarischen Kontrollgremiums", Vorgangstyp.SONSTIG),
+            ("Besetzung externer Gremien", Vorgangstyp.SONSTIG),
+            ("Besetzung interner Gremien", Vorgangstyp.SONSTIG),
+            ("Enquetekommission", Vorgangstyp.SONSTIG),
+            ("EU-Vorlage", Vorgangstyp.SONSTIG),
+            ("Geschäftsordnung", Vorgangstyp.SONSTIG),
+            ("Immunitätsangelegenheit", Vorgangstyp.SONSTIG),
+            ("Mitteilung der Landesregierung/eines Ministeriums", Vorgangstyp.SONSTIG),
+            ("Mitteilung des Bürgerbeauftragten", Vorgangstyp.SONSTIG),
+            ("Mitteilung des Landesbeauftragten für den Datenschutz", Vorgangstyp.SONSTIG),
+            ("Mitteilung des Präsidenten", Vorgangstyp.SONSTIG),
+            ("Mitteilung des Rechnungshofs", Vorgangstyp.SONSTIG),
+            ("Petitionen", Vorgangstyp.SONSTIG),
+            ("Regierungsbefragung", Vorgangstyp.SONSTIG),
+            ("Regierungserklärung/Regierungsinformation", Vorgangstyp.SONSTIG),
+            ("Schreiben des Bundesverfassungsgerichts", Vorgangstyp.SONSTIG),
+            ("Schreiben des Verfassungsgerichtshofs", Vorgangstyp.SONSTIG),
+            ("Untersuchungsausschuss", Vorgangstyp.SONSTIG),
+            ("Wahl im Landtag", Vorgangstyp.SONSTIG),
+            ("Wahlprüfung", Vorgangstyp.SONSTIG),
+        ],
+    )
+    def test_known_types(self, parlis_typ, expected):
+        assert map_vorgangstyp(parlis_typ) == expected
 
-    def test_haushaltsgesetzgebung_maps_to_gg_land_parl(self):
-        assert map_vorgangstyp("Haushaltsgesetzgebung") == Vorgangstyp.GG_LAND_PARL
-
-    def test_volksantrag_maps_to_gg_land_parl(self):
-        assert map_vorgangstyp("Volksantrag") == Vorgangstyp.GG_LAND_PARL
-
-    def test_kleine_anfrage_maps_to_sonstig(self):
-        assert map_vorgangstyp("Kleine Anfrage") == Vorgangstyp.SONSTIG
-
-    def test_unknown_maps_to_sonstig(self):
+    def test_unknown_type_defaults_to_sonstig(self):
         assert map_vorgangstyp("Unbekannter Typ") == Vorgangstyp.SONSTIG
 
-    def test_antrag_landesregierung_maps_to_sonstig(self):
-        assert map_vorgangstyp("Antrag der Landesregierung/eines Ministeriums") == Vorgangstyp.SONSTIG
-
-    def test_antrag_rechnungshof_maps_to_sonstig(self):
-        assert map_vorgangstyp("Antrag des Rechnungshofs") == Vorgangstyp.SONSTIG
-
-    def test_anmerkung_plenarsitzung_maps_to_sonstig(self):
-        assert map_vorgangstyp("Anmerkung zur Plenarsitzung") == Vorgangstyp.SONSTIG
-
-    def test_ansprache_maps_to_sonstig(self):
-        assert map_vorgangstyp("Ansprache/Erklärung/Mitteilung") == Vorgangstyp.SONSTIG
-
-    def test_bericht_kontrollgremium_maps_to_sonstig(self):
-        assert map_vorgangstyp("Bericht des Parlamentarischen Kontrollgremiums") == Vorgangstyp.SONSTIG
-
-    def test_besetzung_extern_maps_to_sonstig(self):
-        assert map_vorgangstyp("Besetzung externer Gremien") == Vorgangstyp.SONSTIG
-
-    def test_besetzung_intern_maps_to_sonstig(self):
-        assert map_vorgangstyp("Besetzung interner Gremien") == Vorgangstyp.SONSTIG
-
-    def test_enquetekommission_maps_to_sonstig(self):
-        assert map_vorgangstyp("Enquetekommission") == Vorgangstyp.SONSTIG
-
-    def test_eu_vorlage_maps_to_sonstig(self):
-        assert map_vorgangstyp("EU-Vorlage") == Vorgangstyp.SONSTIG
-
-    def test_geschaeftsordnung_maps_to_sonstig(self):
-        assert map_vorgangstyp("Geschäftsordnung") == Vorgangstyp.SONSTIG
-
-    def test_immunitaet_maps_to_sonstig(self):
-        assert map_vorgangstyp("Immunitätsangelegenheit") == Vorgangstyp.SONSTIG
-
-    def test_mitteilung_landesregierung_maps_to_sonstig(self):
-        assert map_vorgangstyp("Mitteilung der Landesregierung/eines Ministeriums") == Vorgangstyp.SONSTIG
-
-    def test_mitteilung_buergerbeauftragten_maps_to_sonstig(self):
-        assert map_vorgangstyp("Mitteilung des Bürgerbeauftragten") == Vorgangstyp.SONSTIG
-
-    def test_mitteilung_datenschutz_maps_to_sonstig(self):
-        assert map_vorgangstyp("Mitteilung des Landesbeauftragten für den Datenschutz") == Vorgangstyp.SONSTIG
-
-    def test_mitteilung_praesident_maps_to_sonstig(self):
-        assert map_vorgangstyp("Mitteilung des Präsidenten") == Vorgangstyp.SONSTIG
-
-    def test_mitteilung_rechnungshof_maps_to_sonstig(self):
-        assert map_vorgangstyp("Mitteilung des Rechnungshofs") == Vorgangstyp.SONSTIG
-
-    def test_petitionen_maps_to_sonstig(self):
-        assert map_vorgangstyp("Petitionen") == Vorgangstyp.SONSTIG
-
-    def test_regierungsbefragung_maps_to_sonstig(self):
-        assert map_vorgangstyp("Regierungsbefragung") == Vorgangstyp.SONSTIG
-
-    def test_schreiben_bverfg_maps_to_sonstig(self):
-        assert map_vorgangstyp("Schreiben des Bundesverfassungsgerichts") == Vorgangstyp.SONSTIG
-
-    def test_schreiben_verfgh_maps_to_sonstig(self):
-        assert map_vorgangstyp("Schreiben des Verfassungsgerichtshofs") == Vorgangstyp.SONSTIG
-
-    def test_wahl_im_landtag_maps_to_sonstig(self):
-        assert map_vorgangstyp("Wahl im Landtag") == Vorgangstyp.SONSTIG
-
-    def test_wahlpruefung_maps_to_sonstig(self):
-        assert map_vorgangstyp("Wahlprüfung") == Vorgangstyp.SONSTIG
-
-    def test_map_has_all_known_types(self):
-        expected_keys = {
-            "Gesetzgebung",
-            "Haushaltsgesetzgebung",
-            "Volksantrag",
-            "Antrag",
-            "Antrag der Landesregierung/eines Ministeriums",
-            "Antrag des Rechnungshofs",
-            "Kleine Anfrage",
-            "Große Anfrage",
-            "Mündliche Anfrage",
-            "Aktuelle Debatte",
-            "Anmerkung zur Plenarsitzung",
-            "Ansprache/Erklärung/Mitteilung",
-            "Bericht des Parlamentarischen Kontrollgremiums",
-            "Besetzung externer Gremien",
-            "Besetzung interner Gremien",
-            "Enquetekommission",
-            "EU-Vorlage",
-            "Geschäftsordnung",
-            "Immunitätsangelegenheit",
-            "Mitteilung der Landesregierung/eines Ministeriums",
-            "Mitteilung des Bürgerbeauftragten",
-            "Mitteilung des Landesbeauftragten für den Datenschutz",
-            "Mitteilung des Präsidenten",
-            "Mitteilung des Rechnungshofs",
-            "Petitionen",
-            "Regierungsbefragung",
-            "Regierungserklärung/Regierungsinformation",
-            "Schreiben des Bundesverfassungsgerichts",
-            "Schreiben des Verfassungsgerichtshofs",
-            "Untersuchungsausschuss",
-            "Wahl im Landtag",
-            "Wahlprüfung",
-        }
-        assert set(VORGANGSTYP_MAP.keys()) == expected_keys
+    def test_map_covers_all_known_parlis_types(self):
+        assert len(VORGANGSTYP_MAP) == 32
 
 
 class TestStationstypMapping:
-    def test_erste_beratung_maps_to_vollversammlung(self):
-        assert map_stationstyp("Erste Beratung   Plenarprotokoll 17/141 05.02.2026") == Stationstyp.PARL_VOLLVLSGN
+    @pytest.mark.parametrize(
+        "text,initiator,expected",
+        [
+            ("Erste Beratung   Plenarprotokoll 17/141 05.02.2026", None, Stationstyp.PARL_VOLLVLSGN),
+            ("Zweite Beratung   Plenarprotokoll 17/142 06.02.2026", None, Stationstyp.PARL_VOLLVLSGN),
+            (
+                "Gesetzentwurf    Fraktion GRÜNE  04.02.2026 Drucksache 17/10266   (13 S.)",
+                None,
+                Stationstyp.PARL_INITIATIV,
+            ),
+            (
+                "Gesetzentwurf    Landesregierung  04.02.2026 Drucksache 17/10266",
+                "Landesregierung",
+                Stationstyp.PREPARL_REGENT,
+            ),
+            (
+                "Beschlussempfehlung und Bericht    Ausschuss für Wirtschaft  02.02.2026 Drucksache 17/10210",
+                None,
+                Stationstyp.PARL_AUSSCHBER,
+            ),
+            ("Zustimmung   Plenarprotokoll 17/143", None, Stationstyp.PARL_AKZEPTANZ),
+            ("Ablehnung   Plenarprotokoll 17/143", None, Stationstyp.PARL_ABLEHNUNG),
+            ("Ausfertigung   10.03.2026", None, Stationstyp.POSTPARL_VESJA),
+            ("Gesetzblatt   15.03.2026", None, Stationstyp.POSTPARL_GSBLT),
+            ("Inkrafttreten   01.04.2026", None, Stationstyp.POSTPARL_KRAFT),
+        ],
+    )
+    def test_known_patterns(self, text, initiator, expected):
+        assert map_stationstyp(text, initiator=initiator) == expected
 
-    def test_zweite_beratung_maps_to_vollversammlung(self):
-        assert map_stationstyp("Zweite Beratung   Plenarprotokoll 17/142 06.02.2026") == Stationstyp.PARL_VOLLVLSGN
-
-    def test_gesetzentwurf_maps_to_initiativ(self):
-        assert (
-            map_stationstyp("Gesetzentwurf    Fraktion GRÜNE  04.02.2026 Drucksache 17/10266   (13 S.)")
-            == Stationstyp.PARL_INITIATIV
-        )
-
-    def test_gesetzentwurf_landesregierung_maps_to_preparl_regent(self):
-        text = "Gesetzentwurf    Landesregierung  04.02.2026 Drucksache 17/10266"
-        assert map_stationstyp(text, initiator="Landesregierung") == Stationstyp.PREPARL_REGENT
-
-    def test_beschlussempfehlung_maps_to_ausschussbericht(self):
-        text = "Beschlussempfehlung und Bericht    Ausschuss für Wirtschaft  02.02.2026 Drucksache 17/10210"
-        assert map_stationstyp(text) == Stationstyp.PARL_AUSSCHBER
-
-    def test_zustimmung_maps_to_akzeptanz(self):
-        assert map_stationstyp("Zustimmung   Plenarprotokoll 17/143") == Stationstyp.PARL_AKZEPTANZ
-
-    def test_ablehnung_maps_to_ablehnung(self):
-        assert map_stationstyp("Ablehnung   Plenarprotokoll 17/143") == Stationstyp.PARL_ABLEHNUNG
-
-    def test_ausfertigung_maps_to_vesja(self):
-        assert map_stationstyp("Ausfertigung   10.03.2026") == Stationstyp.POSTPARL_VESJA
-
-    def test_gesetzblatt_maps_to_gsblt(self):
-        assert map_stationstyp("Gesetzblatt   15.03.2026") == Stationstyp.POSTPARL_GSBLT
-
-    def test_inkrafttreten_maps_to_kraft(self):
-        assert map_stationstyp("Inkrafttreten   01.04.2026") == Stationstyp.POSTPARL_KRAFT
-
-    def test_unknown_text_maps_to_sonstig(self):
+    def test_unknown_and_empty_default_to_sonstig(self):
         assert map_stationstyp("unknown text") == Stationstyp.SONSTIG
-
-    def test_empty_text_maps_to_sonstig(self):
         assert map_stationstyp("") == Stationstyp.SONSTIG
 
-    def test_case_insensitive_matching(self):
+    def test_case_insensitive(self):
         assert map_stationstyp("erste beratung   Plenarprotokoll 17/141") == Stationstyp.PARL_VOLLVLSGN
 
     def test_map_dict_has_expected_keys(self):
@@ -183,34 +106,83 @@ class TestStationstypMapping:
 
 
 class TestDokumententypMapping:
-    def test_gesetzentwurf_maps_to_entwurf(self):
-        assert map_dokumententyp("Gesetzentwurf") == Dokumententyp.ENTWURF
+    @pytest.mark.parametrize(
+        "context,is_vorparl,expected",
+        [
+            ("Gesetzentwurf", False, Dokumententyp.ENTWURF),
+            ("Gesetzentwurf", True, Dokumententyp.PREPARL_ENTWURF),
+            ("Plenarprotokoll", False, Dokumententyp.REDEPROTOKOLL),
+            ("Antrag", False, Dokumententyp.ANTRAG),
+            ("Kleine Anfrage", False, Dokumententyp.ANFRAGE),
+            ("Stellungnahme", False, Dokumententyp.STELLUNGNAHME),
+            ("Beschlussempfehlung", False, Dokumententyp.BESCHLUSSEMPF),
+        ],
+    )
+    def test_known_patterns(self, context, is_vorparl, expected):
+        assert map_dokumententyp(context, is_vorparlamentarisch=is_vorparl) == expected
 
-    def test_gesetzentwurf_vorparlamentarisch_maps_to_preparl_entwurf(self):
-        assert map_dokumententyp("Gesetzentwurf", is_vorparlamentarisch=True) == Dokumententyp.PREPARL_ENTWURF
-
-    def test_plenarprotokoll_maps_to_redeprotokoll(self):
-        assert map_dokumententyp("Plenarprotokoll") == Dokumententyp.REDEPROTOKOLL
-
-    def test_antrag_maps_to_antrag(self):
-        assert map_dokumententyp("Antrag") == Dokumententyp.ANTRAG
-
-    def test_kleine_anfrage_maps_to_anfrage(self):
-        assert map_dokumententyp("Kleine Anfrage") == Dokumententyp.ANFRAGE
-
-    def test_stellungnahme_maps_to_stellungnahme(self):
-        assert map_dokumententyp("Stellungnahme") == Dokumententyp.STELLUNGNAHME
-
-    def test_beschlussempfehlung_maps_to_beschlussempf(self):
-        assert map_dokumententyp("Beschlussempfehlung") == Dokumententyp.BESCHLUSSEMPF
-
-    def test_unknown_maps_to_sonstig(self):
+    def test_unknown_and_empty_default_to_sonstig(self):
         assert map_dokumententyp("unknown") == Dokumententyp.SONSTIG
-
-    def test_empty_maps_to_sonstig(self):
         assert map_dokumententyp("") == Dokumententyp.SONSTIG
 
     def test_map_dict_has_expected_keys(self):
         assert "Antrag" in DOKUMENTENTYP_MAP
         assert "Plenarprotokoll" in DOKUMENTENTYP_MAP
         assert "Stellungnahme" in DOKUMENTENTYP_MAP
+
+
+class TestEnumStructure:
+    @pytest.mark.parametrize(
+        "enum_cls,expected_values",
+        [
+            (
+                Stationstyp,
+                {
+                    "preparl-regent",
+                    "preparl-regbsl",
+                    "parl-initiativ",
+                    "parl-ausschber",
+                    "parl-vollvlsgn",
+                    "parl-akzeptanz",
+                    "parl-ablehnung",
+                    "postparl-vesja",
+                    "postparl-gsblt",
+                    "postparl-kraft",
+                    "sonstig",
+                },
+            ),
+            (Vorgangstyp, {"gg-land-parl", "bw-einsatz", "sonstig"}),
+            (
+                Dokumententyp,
+                {
+                    "preparl-entwurf",
+                    "entwurf",
+                    "antrag",
+                    "anfrage",
+                    "antwort",
+                    "mitteilung",
+                    "beschlussempf",
+                    "stellungnahme",
+                    "gutachten",
+                    "redeprotokoll",
+                    "tops",
+                    "tops-aend",
+                    "tops-ergz",
+                    "sonstig",
+                },
+            ),
+        ],
+    )
+    def test_enum_members(self, enum_cls, expected_values):
+        assert {m.value for m in enum_cls} == expected_values
+
+    @pytest.mark.parametrize(
+        "enum_cls,member_value",
+        [
+            (Stationstyp, "parl-initiativ"),
+            (Vorgangstyp, "gg-land-parl"),
+        ],
+    )
+    def test_str_comparison(self, enum_cls, member_value):
+        matching = next(m for m in enum_cls if m.value == member_value)
+        assert matching == member_value

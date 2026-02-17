@@ -19,7 +19,8 @@
       "Bash(pip install:*)",
       "Bash(pip-compile:*)",
       "Bash(pip-audit:*)",
-      "Bash(.venv/bin/python:*)"
+      "Bash(.venv/bin/python:*)",
+      "Bash(wc:*)"
     ]
   }
 }

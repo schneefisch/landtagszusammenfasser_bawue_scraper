@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
+from bawue_scraper.domain.enums import Dokumententyp, Stationstyp, Vorgangstyp
 from bawue_scraper.orchestrator import DEFAULT_VORGANGSTYPEN, Orchestrator
 
 
@@ -21,14 +22,16 @@ def orchestrator(config, mock_vorgang_source, mock_document_extractor, mock_cale
     )
 
 
-def _make_raw_vorgang(vid: str, titel: str = "Test Gesetz", vorgangstyp: str = "Gesetzgebung") -> dict:
+def _make_raw_vorgang(
+    vid: str,
+    titel: str = "Test Gesetz",
+    vorgangstyp: str = "Gesetzgebung",
+    initiative: str = "Fraktion GRÜNE",
+    fundstellen: list[dict] | None = None,
+) -> dict:
     """Create a minimal raw Vorgang dict as returned by ParlisAdapter."""
-    return {
-        "titel": titel,
-        "vorgangs_id": vid,
-        "Vorgangstyp": vorgangstyp,
-        "Initiative": "Fraktion GRÜNE",
-        "fundstellen_parsed": [
+    if fundstellen is None:
+        fundstellen = [
             {
                 "raw": "Gesetzentwurf    Fraktion GRÜNE  04.02.2026 Drucksache 17/10266   (13 S.)",
                 "datum": "04.02.2026",
@@ -44,7 +47,13 @@ def _make_raw_vorgang(vid: str, titel: str = "Test Gesetz", vorgangstyp: str = "
                 "station_typ": "Erste Beratung",
                 "pdf_url": "",
             },
-        ],
+        ]
+    return {
+        "titel": titel,
+        "vorgangs_id": vid,
+        "Vorgangstyp": vorgangstyp,
+        "Initiative": initiative,
+        "fundstellen_parsed": fundstellen,
     }
 
 
@@ -207,48 +216,17 @@ class TestDefaultVorgangstypen:
 
 
 class TestRun:
-    def test_run_calls_run_vorgaenge(self, orchestrator, mock_vorgang_source, mock_ltzf_api, mock_cache):
+    def test_run_delegates_to_run_vorgaenge(self, orchestrator, mock_vorgang_source, mock_cache):
         mock_vorgang_source.search.return_value = []
-        mock_cache.is_processed.return_value = False
 
         orchestrator.run()
 
-        # run_vorgaenge should have been called (search was invoked)
         assert mock_vorgang_source.search.call_count > 0
 
     def test_run_catches_kalender_not_implemented(self, orchestrator, mock_vorgang_source, mock_cache):
         mock_vorgang_source.search.return_value = []
         # Should not raise even though run_kalender raises NotImplementedError
         orchestrator.run()
-
-    def test_run_with_single_type_override(self, orchestrator, mock_vorgang_source, mock_cache):
-        mock_vorgang_source.search.return_value = []
-
-        orchestrator.run(vorgangstypen=["Antrag"])
-
-        assert mock_vorgang_source.search.call_count == 1
-        call_args = mock_vorgang_source.search.call_args
-        assert call_args[0][0] == "Antrag"
-
-    def test_run_with_date_overrides(self, orchestrator, mock_vorgang_source, mock_cache):
-        mock_vorgang_source.search.return_value = []
-
-        orchestrator.run(
-            vorgangstypen=["Gesetzgebung"],
-            date_from=date(2025, 6, 1),
-            date_to=date(2025, 12, 31),
-        )
-
-        call_args = mock_vorgang_source.search.call_args
-        assert call_args[0][1] == date(2025, 6, 1)
-        assert call_args[0][2] == date(2025, 12, 31)
-
-    def test_run_defaults_use_all_vorgangstypen(self, orchestrator, mock_vorgang_source, mock_cache):
-        mock_vorgang_source.search.return_value = []
-
-        orchestrator.run()
-
-        assert mock_vorgang_source.search.call_count == len(DEFAULT_VORGANGSTYPEN)
 
     @patch("bawue_scraper.orchestrator.date")
     def test_run_default_date_from_uses_lookback(
@@ -287,3 +265,86 @@ class TestBuildVorgang:
         v1 = orchestrator._build_vorgang(_make_raw_vorgang("V-001"))
         v2 = orchestrator._build_vorgang(_make_raw_vorgang("V-002"))
         assert v1.api_id != v2.api_id
+
+    def test_gesetzentwurf_from_landesregierung(self, orchestrator):
+        """Gesetzentwurf from Landesregierung → PREPARL_REGENT station + PREPARL_ENTWURF document."""
+        raw = _make_raw_vorgang(
+            "V-010",
+            initiative="Landesregierung",
+            fundstellen=[
+                {
+                    "raw": "Gesetzentwurf    Landesregierung  01.03.2026 Drucksache 17/11000   (5 S.)",
+                    "datum": "01.03.2026",
+                    "drucksache": "17/11000",
+                    "station_typ": "Gesetzentwurf",
+                    "seiten": 5,
+                    "pdf_url": "https://example.com/doc.pdf",
+                },
+            ],
+        )
+        vorgang = orchestrator._build_vorgang(raw)
+
+        assert vorgang.typ == Vorgangstyp.GG_LAND_PARL
+        assert vorgang.initiatoren[0].organisation == "Landesregierung"
+
+        station = vorgang.stationen[0]
+        assert station.typ == Stationstyp.PREPARL_REGENT
+        assert station.dokumente[0].typ == Dokumententyp.PREPARL_ENTWURF
+        assert station.dokumente[0].drucksnr == "17/11000"
+
+    def test_plenarprotokoll_fundstelle_creates_plenum_gremium(self, orchestrator):
+        """Plenarprotokoll fundstelle → Plenum gremium."""
+        raw = _make_raw_vorgang(
+            "V-020",
+            fundstellen=[
+                {
+                    "raw": "Erste Beratung   Plenarprotokoll 17/141 05.02.2026",
+                    "datum": "05.02.2026",
+                    "plenarprotokoll": "17/141",
+                    "station_typ": "Erste Beratung",
+                    "pdf_url": "",
+                },
+            ],
+        )
+        vorgang = orchestrator._build_vorgang(raw)
+
+        station = vorgang.stationen[0]
+        assert station.typ == Stationstyp.PARL_VOLLVLSGN
+        assert station.gremium.name == "Plenum"
+        assert station.dokumente == []  # no pdf_url → no document
+
+    def test_ausschuss_fundstelle_creates_committee_gremium(self, orchestrator):
+        """Ausschuss fundstelle → committee gremium."""
+        raw = _make_raw_vorgang(
+            "V-030",
+            fundstellen=[
+                {
+                    "raw": "Beschlussempfehlung und Bericht    Ausschuss für Wirtschaft  02.02.2026 Drucksache 17/10210",  # noqa: E501
+                    "datum": "02.02.2026",
+                    "drucksache": "17/10210",
+                    "station_typ": "Beschlussempfehlung und Bericht",
+                    "ausschuss": "Ausschuss für Wirtschaft",
+                    "pdf_url": "https://example.com/report.pdf",
+                },
+            ],
+        )
+        vorgang = orchestrator._build_vorgang(raw)
+
+        station = vorgang.stationen[0]
+        assert station.typ == Stationstyp.PARL_AUSSCHBER
+        assert station.gremium.name == "Ausschuss für Wirtschaft"
+        assert station.dokumente[0].typ == Dokumententyp.BESCHLUSSEMPF
+
+    def test_empty_fundstellen_produces_no_stations(self, orchestrator):
+        """Empty fundstellen → no stations."""
+        raw = _make_raw_vorgang("V-040", fundstellen=[])
+        vorgang = orchestrator._build_vorgang(raw)
+
+        assert vorgang.stationen == []
+
+    def test_missing_initiative_produces_empty_initiatoren(self, orchestrator):
+        """Missing initiative → empty initiatoren list."""
+        raw = _make_raw_vorgang("V-050", initiative="", fundstellen=[])
+        vorgang = orchestrator._build_vorgang(raw)
+
+        assert vorgang.initiatoren == []

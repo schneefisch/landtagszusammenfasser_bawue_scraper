@@ -56,14 +56,24 @@ def adapter(config, monkeypatch):
     return ParlisAdapter(config)
 
 
+def _mock_search(html, item_count=1):
+    """Register standard session + search + report mocks for a single search call."""
+    responses.add(responses.GET, BASE_URL, body="<html></html>", status=200)
+    responses.add(responses.POST, BROWSE_URL, json={"report_id": "rpt-1", "item_count": item_count}, status=200)
+    if item_count > 0:
+        responses.add(responses.GET, REPORT_URL, body=html, status=200)
+
+
 class TestParlisAdapterInit:
     def test_instantiation(self, config):
         adapter = ParlisAdapter(config)
         assert adapter._config is config
         assert adapter._session is not None
 
+    def test_get_detail_raises_not_implemented(self, adapter):
+        with pytest.raises(NotImplementedError):
+            adapter.get_detail("V-12345")
 
-class TestEstablishSession:
     @responses.activate
     def test_establish_session_sets_cookies(self, adapter):
         responses.add(
@@ -126,19 +136,7 @@ class TestSearchQueryConstruction:
 class TestResultParsing:
     @responses.activate
     def test_parses_vorgang_from_html(self, adapter):
-        responses.add(responses.GET, BASE_URL, body="<html></html>", status=200)
-        responses.add(
-            responses.POST,
-            BROWSE_URL,
-            json={"report_id": "rpt-123", "item_count": 1},
-            status=200,
-        )
-        responses.add(
-            responses.GET,
-            REPORT_URL,
-            body=SAMPLE_HTML_RECORD,
-            status=200,
-        )
+        _mock_search(SAMPLE_HTML_RECORD)
 
         results = adapter.search("Gesetzgebung", date(2026, 1, 1), date(2026, 2, 1))
 
@@ -151,60 +149,45 @@ class TestResultParsing:
 
     @responses.activate
     def test_parses_multiple_records(self, adapter):
-        responses.add(responses.GET, BASE_URL, body="<html></html>", status=200)
-        responses.add(
-            responses.POST,
-            BROWSE_URL,
-            json={"report_id": "rpt-123", "item_count": 2},
-            status=200,
-        )
-        responses.add(responses.GET, REPORT_URL, body=SAMPLE_HTML_TWO_RECORDS, status=200)
+        _mock_search(SAMPLE_HTML_TWO_RECORDS, item_count=2)
 
         results = adapter.search("Gesetzgebung", date(2026, 1, 1), date(2026, 2, 1))
         assert len(results) == 2
         assert results[0]["titel"] == "Gesetz A"
         assert results[1]["titel"] == "Gesetz B"
 
-
-class TestFundstelleParsing:
     @responses.activate
-    def test_gesetzentwurf_fundstelle(self, adapter):
-        responses.add(responses.GET, BASE_URL, body="<html></html>", status=200)
-        responses.add(responses.POST, BROWSE_URL, json={"report_id": "rpt-1", "item_count": 1}, status=200)
-        responses.add(responses.GET, REPORT_URL, body=SAMPLE_HTML_RECORD, status=200)
+    def test_parses_all_fundstelle_types(self, adapter):
+        """Verify Gesetzentwurf, Plenarprotokoll, and Ausschuss fundstellen in one search."""
+        _mock_search(SAMPLE_HTML_RECORD)
 
         results = adapter.search("Gesetzgebung", date(2026, 1, 1), date(2026, 2, 1))
-        fund = results[0]["fundstellen_parsed"][0]
-        assert fund["datum"] == "04.02.2026"
-        assert fund["drucksache"] == "17/10266"
-        assert fund["station_typ"] == "Gesetzentwurf"
-        assert fund["seiten"] == 13
-        assert fund["pdf_url"] == "https://www.landtag-bw.de/resource/blob/12345/doc.pdf"
+        fundstellen = results[0]["fundstellen_parsed"]
+
+        # Gesetzentwurf fundstelle
+        assert fundstellen[0]["datum"] == "04.02.2026"
+        assert fundstellen[0]["drucksache"] == "17/10266"
+        assert fundstellen[0]["station_typ"] == "Gesetzentwurf"
+        assert fundstellen[0]["seiten"] == 13
+        assert fundstellen[0]["pdf_url"] == "https://www.landtag-bw.de/resource/blob/12345/doc.pdf"
+
+        # Plenarprotokoll fundstelle
+        assert fundstellen[1]["datum"] == "05.02.2026"
+        assert fundstellen[1]["plenarprotokoll"] == "17/141"
+        assert fundstellen[1]["station_typ"] == "Erste Beratung"
+
+        # Ausschuss fundstelle
+        assert fundstellen[2]["datum"] == "02.02.2026"
+        assert fundstellen[2]["drucksache"] == "17/10210"
+        assert fundstellen[2]["station_typ"] == "Beschlussempfehlung und Bericht"
+        assert "Ausschuss für Wirtschaft" in fundstellen[2]["ausschuss"]
 
     @responses.activate
-    def test_plenarprotokoll_fundstelle(self, adapter):
-        responses.add(responses.GET, BASE_URL, body="<html></html>", status=200)
-        responses.add(responses.POST, BROWSE_URL, json={"report_id": "rpt-1", "item_count": 1}, status=200)
-        responses.add(responses.GET, REPORT_URL, body=SAMPLE_HTML_RECORD, status=200)
+    def test_zero_results_returns_empty_list(self, adapter):
+        _mock_search(SAMPLE_HTML_RECORD, item_count=0)
 
         results = adapter.search("Gesetzgebung", date(2026, 1, 1), date(2026, 2, 1))
-        fund = results[0]["fundstellen_parsed"][1]
-        assert fund["datum"] == "05.02.2026"
-        assert fund["plenarprotokoll"] == "17/141"
-        assert fund["station_typ"] == "Erste Beratung"
-
-    @responses.activate
-    def test_ausschuss_fundstelle(self, adapter):
-        responses.add(responses.GET, BASE_URL, body="<html></html>", status=200)
-        responses.add(responses.POST, BROWSE_URL, json={"report_id": "rpt-1", "item_count": 1}, status=200)
-        responses.add(responses.GET, REPORT_URL, body=SAMPLE_HTML_RECORD, status=200)
-
-        results = adapter.search("Gesetzgebung", date(2026, 1, 1), date(2026, 2, 1))
-        fund = results[0]["fundstellen_parsed"][2]
-        assert fund["datum"] == "02.02.2026"
-        assert fund["drucksache"] == "17/10210"
-        assert fund["station_typ"] == "Beschlussempfehlung und Bericht"
-        assert "Ausschuss für Wirtschaft" in fund["ausschuss"]
+        assert results == []
 
 
 class TestPagination:
@@ -242,21 +225,6 @@ class TestPagination:
         # Verify two GET requests to report URL (two pages)
         report_calls = [c for c in responses.calls if REPORT_URL in c.request.url]
         assert len(report_calls) == 2
-
-
-class TestEmptyResults:
-    @responses.activate
-    def test_zero_results_returns_empty_list(self, adapter):
-        responses.add(responses.GET, BASE_URL, body="<html></html>", status=200)
-        responses.add(
-            responses.POST,
-            BROWSE_URL,
-            json={"report_id": "", "item_count": 0},
-            status=200,
-        )
-
-        results = adapter.search("Gesetzgebung", date(2026, 1, 1), date(2026, 2, 1))
-        assert results == []
 
 
 class TestDateSubdivision:
@@ -364,8 +332,6 @@ class TestDateSubdivision:
         post_calls = [c for c in responses.calls if c.request.method == "POST"]
         assert len(post_calls) == 4
 
-
-class TestSessionEstablishment:
     @responses.activate
     def test_session_established_once_even_with_subdivision(self, adapter):
         """_establish_session should be called once per search(), not per sub-window."""
@@ -401,9 +367,3 @@ class TestSessionEstablishment:
         # Only 1 GET to BASE_URL (session establishment), not 3
         session_calls = [c for c in responses.calls if c.request.method == "GET" and c.request.url == BASE_URL]
         assert len(session_calls) == 1
-
-
-class TestGetDetail:
-    def test_get_detail_raises_not_implemented(self, adapter):
-        with pytest.raises(NotImplementedError):
-            adapter.get_detail("V-12345")

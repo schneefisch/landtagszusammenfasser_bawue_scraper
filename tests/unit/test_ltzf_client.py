@@ -8,6 +8,8 @@ import responses
 from bawue_scraper.adapters.ltzf_client import LtzfClient
 from bawue_scraper.config import Config
 
+VORGANG_URL = "http://localhost:8080/api/v2/vorgang"
+
 
 class TestLtzfClientSubmitVorgang:
     @responses.activate
@@ -51,34 +53,19 @@ class TestLtzfClientSubmitVorgang:
         assert sent_body == expected_body
 
     @responses.activate
-    def test_submit_vorgang_http_error_returns_false(self, config, sample_vorgang):
-        responses.put(
-            "http://localhost:8080/api/v2/vorgang",
-            status=500,
-        )
+    @pytest.mark.parametrize("status_code", [400, 403, 500])
+    def test_submit_vorgang_error_status_returns_false(self, config, sample_vorgang, status_code):
+        responses.put(VORGANG_URL, status=status_code)
         client = LtzfClient(config)
         result = client.submit_vorgang(sample_vorgang)
         assert result is False
 
     @responses.activate
     def test_submit_vorgang_conflict_returns_true(self, config, sample_vorgang):
-        responses.put(
-            "http://localhost:8080/api/v2/vorgang",
-            status=409,
-        )
+        responses.put(VORGANG_URL, status=409)
         client = LtzfClient(config)
         result = client.submit_vorgang(sample_vorgang)
         assert result is True
-
-    @responses.activate
-    def test_submit_vorgang_forbidden_returns_false(self, config, sample_vorgang, caplog):
-        responses.put(
-            "http://localhost:8080/api/v2/vorgang",
-            status=403,
-        )
-        client = LtzfClient(config)
-        result = client.submit_vorgang(sample_vorgang)
-        assert result is False
 
     def test_submit_vorgang_connection_error_logs_concise_message(self, config, sample_vorgang, caplog):
         """ConnectionError should produce a short log message, not a full traceback."""
