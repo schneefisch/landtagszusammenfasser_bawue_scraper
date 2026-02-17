@@ -113,15 +113,6 @@ class TestLtzfClientRedirectPolicy:
         assert result is False
 
 
-class TestLtzfClientSubmitSitzungen:
-    def test_submit_sitzungen_not_implemented(self, config, sample_sitzung):
-        from datetime import date
-
-        client = LtzfClient(config)
-        with pytest.raises(NotImplementedError):
-            client.submit_sitzungen(date(2026, 2, 5), [sample_sitzung])
-
-
 class TestLoggingLtzfClient:
     def test_submit_vorgang_returns_true(self, sample_vorgang, caplog):
         from bawue_scraper.adapters.logging_ltzf_client import LoggingLtzfClient

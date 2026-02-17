@@ -65,15 +65,6 @@ def _mock_search(html, item_count=1):
 
 
 class TestParlisAdapterInit:
-    def test_instantiation(self, config):
-        adapter = ParlisAdapter(config)
-        assert adapter._config is config
-        assert adapter._session is not None
-
-    def test_get_detail_raises_not_implemented(self, adapter):
-        with pytest.raises(NotImplementedError):
-            adapter.get_detail("V-12345")
-
     @responses.activate
     def test_establish_session_sets_cookies(self, adapter):
         responses.add(

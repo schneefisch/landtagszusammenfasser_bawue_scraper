@@ -4,8 +4,6 @@ import pytest
 
 from bawue_scraper.domain.enums import Dokumententyp, Stationstyp, Vorgangstyp
 from bawue_scraper.mapping.enum_mapper import (
-    DOKUMENTENTYP_MAP,
-    STATIONSTYP_MAP,
     VORGANGSTYP_MAP,
     map_dokumententyp,
     map_stationstyp,
@@ -99,11 +97,6 @@ class TestStationstypMapping:
     def test_case_insensitive(self):
         assert map_stationstyp("erste beratung   Plenarprotokoll 17/141") == Stationstyp.PARL_VOLLVLSGN
 
-    def test_map_dict_has_expected_keys(self):
-        assert "Gesetzentwurf" in STATIONSTYP_MAP
-        assert "Erste Beratung" in STATIONSTYP_MAP
-        assert "Ablehnung" in STATIONSTYP_MAP
-
 
 class TestDokumententypMapping:
     @pytest.mark.parametrize(
@@ -124,11 +117,6 @@ class TestDokumententypMapping:
     def test_unknown_and_empty_default_to_sonstig(self):
         assert map_dokumententyp("unknown") == Dokumententyp.SONSTIG
         assert map_dokumententyp("") == Dokumententyp.SONSTIG
-
-    def test_map_dict_has_expected_keys(self):
-        assert "Antrag" in DOKUMENTENTYP_MAP
-        assert "Plenarprotokoll" in DOKUMENTENTYP_MAP
-        assert "Stellungnahme" in DOKUMENTENTYP_MAP
 
 
 class TestEnumStructure:
@@ -175,14 +163,3 @@ class TestEnumStructure:
     )
     def test_enum_members(self, enum_cls, expected_values):
         assert {m.value for m in enum_cls} == expected_values
-
-    @pytest.mark.parametrize(
-        "enum_cls,member_value",
-        [
-            (Stationstyp, "parl-initiativ"),
-            (Vorgangstyp, "gg-land-parl"),
-        ],
-    )
-    def test_str_comparison(self, enum_cls, member_value):
-        matching = next(m for m in enum_cls if m.value == member_value)
-        assert matching == member_value

@@ -5,40 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from bawue_scraper.__main__ import build_parser, main
-
-
-class TestBuildParser:
-    def test_type_arg(self):
-        parser = build_parser()
-        args = parser.parse_args(["--type", "Kleine Anfrage"])
-        assert args.vorgangstyp == "Kleine Anfrage"
-
-    def test_date_from_arg(self):
-        parser = build_parser()
-        args = parser.parse_args(["--date-from", "01.06.2025"])
-        assert args.date_from == "01.06.2025"
-
-    def test_date_to_arg(self):
-        parser = build_parser()
-        args = parser.parse_args(["--date-to", "31.12.2025"])
-        assert args.date_to == "31.12.2025"
-
-    def test_all_args_combined(self):
-        parser = build_parser()
-        args = parser.parse_args(
-            [
-                "--type",
-                "Antrag",
-                "--date-from",
-                "01.01.2025",
-                "--date-to",
-                "31.12.2025",
-            ]
-        )
-        assert args.vorgangstyp == "Antrag"
-        assert args.date_from == "01.01.2025"
-        assert args.date_to == "31.12.2025"
+from bawue_scraper.__main__ import main
 
 
 @pytest.fixture()

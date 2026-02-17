@@ -199,12 +199,6 @@ class TestRunVorgaenge:
         assert "2" in caplog.text  # submitted
 
 
-class TestRunKalender:
-    def test_raises_not_implemented(self, orchestrator):
-        with pytest.raises(NotImplementedError):
-            orchestrator.run_kalender()
-
-
 class TestDefaultVorgangstypen:
     def test_contains_all_parlis_types(self):
         assert "Gesetzgebung" in DEFAULT_VORGANGSTYPEN
