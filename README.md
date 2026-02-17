@@ -23,6 +23,9 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
 
+# Install pip-tools for managing lock files (not included in dev extras)
+pip install pip-tools
+
 # Copy and configure environment variables
 cp .env.example .env
 # Edit .env with your LTZF API credentials
