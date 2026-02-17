@@ -1,7 +1,5 @@
 """Tests for configuration loading."""
 
-import pytest
-from pydantic import ValidationError
 
 from bawue_scraper.config import Config
 
@@ -20,12 +18,16 @@ class TestConfig:
         assert config.wahlperiode == 17
         assert config.openai_api_key is None
 
-    def test_missing_required_raises(self, monkeypatch):
-        monkeypatch.delenv("LTZF_API_URL", raising=False)
-        monkeypatch.delenv("LTZF_API_KEY", raising=False)
-        monkeypatch.delenv("COLLECTOR_ID", raising=False)
-        with pytest.raises((ValidationError, ValueError)):
-            Config()
+    def test_ltzf_mode_defaults_to_dry_run(self, config):
+        assert config.ltzf_mode == "dry-run"
+
+    def test_ltzf_mode_from_env(self, monkeypatch):
+        monkeypatch.setenv("LTZF_API_URL", "http://localhost:8080")
+        monkeypatch.setenv("LTZF_API_KEY", "test-api-key")
+        monkeypatch.setenv("COLLECTOR_ID", "test-collector")
+        monkeypatch.setenv("LTZF_MODE", "live")
+        cfg = Config()
+        assert cfg.ltzf_mode == "live"
 
     def test_custom_values(self, monkeypatch):
         monkeypatch.setenv("LTZF_API_URL", "https://api.example.com")

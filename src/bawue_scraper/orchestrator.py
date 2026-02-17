@@ -16,8 +16,41 @@ from bawue_scraper.ports.vorgang_source import VorgangSource
 
 logger = logging.getLogger(__name__)
 
-# Default Vorgangstypen to scrape
-DEFAULT_VORGANGSTYPEN = ["Gesetzgebung", "Haushaltsgesetzgebung", "Volksantrag"]
+# Default Vorgangstypen to scrape — all types available in PARLIS
+DEFAULT_VORGANGSTYPEN = [
+    "Gesetzgebung",
+    "Haushaltsgesetzgebung",
+    "Volksantrag",
+    "Antrag",
+    "Antrag der Landesregierung/eines Ministeriums",
+    "Antrag des Rechnungshofs",
+    "Kleine Anfrage",
+    "Große Anfrage",
+    "Mündliche Anfrage",
+    "Aktuelle Debatte",
+    "Anmerkung zur Plenarsitzung",
+    "Ansprache/Erklärung/Mitteilung",
+    "Bericht des Parlamentarischen Kontrollgremiums",
+    "Besetzung externer Gremien",
+    "Besetzung interner Gremien",
+    "Enquetekommission",
+    "EU-Vorlage",
+    "Geschäftsordnung",
+    "Immunitätsangelegenheit",
+    "Mitteilung der Landesregierung/eines Ministeriums",
+    "Mitteilung des Bürgerbeauftragten",
+    "Mitteilung des Landesbeauftragten für den Datenschutz",
+    "Mitteilung des Präsidenten",
+    "Mitteilung des Rechnungshofs",
+    "Petitionen",
+    "Regierungsbefragung",
+    "Regierungserklärung/Regierungsinformation",
+    "Schreiben des Bundesverfassungsgerichts",
+    "Schreiben des Verfassungsgerichtshofs",
+    "Untersuchungsausschuss",
+    "Wahl im Landtag",
+    "Wahlprüfung",
+]
 
 
 class Orchestrator:
@@ -39,12 +72,24 @@ class Orchestrator:
         self._ltzf_api = ltzf_api
         self._cache = cache
 
-    def run(self) -> None:
-        """Execute a full scraping cycle."""
+    def run(
+        self,
+        *,
+        vorgangstypen: list[str] | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
+    ) -> None:
+        """Execute a full scraping cycle.
+
+        Args:
+            vorgangstypen: Override the default list of Vorgangstypen to scrape.
+            date_from: Override the default start date.
+            date_to: Override the default end date.
+        """
         self.run_vorgaenge(
-            vorgangstypen=DEFAULT_VORGANGSTYPEN,
-            date_from=date(2026, 1, 1),
-            date_to=date.today(),
+            vorgangstypen=vorgangstypen or DEFAULT_VORGANGSTYPEN,
+            date_from=date_from or date(2026, 1, 1),
+            date_to=date_to or date.today(),
         )
         try:
             self.run_kalender()
@@ -78,9 +123,13 @@ class Orchestrator:
 
                 try:
                     vorgang = self._build_vorgang(raw)
-                    self._ltzf_api.submit_vorgang(vorgang)
-                    self._cache.mark_processed(vorgang_id)
-                    submitted += 1
+                    success = self._ltzf_api.submit_vorgang(vorgang)
+                    if success:
+                        self._cache.mark_processed(vorgang_id)
+                        submitted += 1
+                    else:
+                        errors += 1
+                        logger.warning("Failed to submit Vorgang %s", vorgang_id)
                 except Exception:
                     errors += 1
                     logger.error("Error processing Vorgang %s", vorgang_id, exc_info=True)

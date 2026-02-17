@@ -258,10 +258,13 @@ class TestEmptyResults:
         assert results == []
 
 
-class TestStatusRunning:
+class TestDateSubdivision:
     @responses.activate
-    def test_running_status_returns_empty_list(self, adapter):
+    def test_subdivides_on_running_status(self, adapter):
+        """When initial search returns status=running, subdivide into monthly windows."""
+        # First call: establish session
         responses.add(responses.GET, BASE_URL, body="<html></html>", status=200)
+        # First search: too large, returns running
         responses.add(
             responses.POST,
             BROWSE_URL,
@@ -272,9 +275,93 @@ class TestStatusRunning:
             },
             status=200,
         )
+        # Sub-window 1 (Jan): session + search + report
+        responses.add(responses.GET, BASE_URL, body="<html></html>", status=200)
+        responses.add(
+            responses.POST,
+            BROWSE_URL,
+            json={"report_id": "rpt-jan", "item_count": 1},
+            status=200,
+        )
+        record_jan = (
+            '<html><body><div class="efxRecordRepeater">'
+            '<a class="efxZoomShort-Vorgang">Anfrage Jan</a>'
+            "<dl><dt>Vorgangs-ID:</dt><dd>V-100</dd></dl>"
+            '<script>var url = "/parlis/vorgang/V-100";</script>'
+            "</div></body></html>"
+        )
+        responses.add(responses.GET, REPORT_URL, body=record_jan, status=200)
+        # Sub-window 2 (Feb): session + search (empty)
+        responses.add(responses.GET, BASE_URL, body="<html></html>", status=200)
+        responses.add(
+            responses.POST,
+            BROWSE_URL,
+            json={"report_id": "rpt-feb", "item_count": 0},
+            status=200,
+        )
+
+        results = adapter.search("Kleine Anfrage", date(2026, 1, 1), date(2026, 2, 28))
+
+        assert len(results) == 1
+        assert results[0]["titel"] == "Anfrage Jan"
+
+    @responses.activate
+    def test_no_subdivision_on_normal_response(self, adapter):
+        """Normal response (with report_id) should NOT trigger subdivision."""
+        responses.add(responses.GET, BASE_URL, body="<html></html>", status=200)
+        responses.add(
+            responses.POST,
+            BROWSE_URL,
+            json={"report_id": "rpt-123", "item_count": 1},
+            status=200,
+        )
+        record = (
+            '<html><body><div class="efxRecordRepeater">'
+            '<a class="efxZoomShort-Vorgang">Normal</a>'
+            "<dl><dt>Vorgangs-ID:</dt><dd>V-001</dd></dl>"
+            '<script>var url = "/parlis/vorgang/V-001";</script>'
+            "</div></body></html>"
+        )
+        responses.add(responses.GET, REPORT_URL, body=record, status=200)
 
         results = adapter.search("Gesetzgebung", date(2026, 1, 1), date(2026, 2, 1))
+
+        assert len(results) == 1
+        # Only 1 POST call (no subdivision)
+        post_calls = [c for c in responses.calls if c.request.method == "POST"]
+        assert len(post_calls) == 1
+
+    @responses.activate
+    def test_subdivision_spans_multiple_months(self, adapter):
+        """Subdivision should create monthly windows spanning the full date range."""
+        # Session + running response
+        responses.add(responses.GET, BASE_URL, body="<html></html>", status=200)
+        responses.add(
+            responses.POST,
+            BROWSE_URL,
+            json={
+                "report_id": "",
+                "item_count": 0,
+                "sources": {"Star": {"status": "running", "hits": "4000"}},
+            },
+            status=200,
+        )
+        # 3 sub-windows (Jan, Feb, Mar) — all empty
+        for _ in range(3):
+            responses.add(responses.GET, BASE_URL, body="<html></html>", status=200)
+            responses.add(
+                responses.POST,
+                BROWSE_URL,
+                json={"report_id": "", "item_count": 0},
+                status=200,
+            )
+
+        results = adapter.search("Kleine Anfrage", date(2026, 1, 15), date(2026, 3, 20))
+
         assert results == []
+        # 1 initial + 3 subdivided = 4 POST calls
+        post_calls = [c for c in responses.calls if c.request.method == "POST"]
+        assert len(post_calls) == 4
 
 
 class TestGetDetail:

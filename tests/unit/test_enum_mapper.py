@@ -27,18 +27,106 @@ class TestVorgangstypMapping:
     def test_unknown_maps_to_sonstig(self):
         assert map_vorgangstyp("Unbekannter Typ") == Vorgangstyp.SONSTIG
 
+    def test_antrag_landesregierung_maps_to_sonstig(self):
+        assert map_vorgangstyp("Antrag der Landesregierung/eines Ministeriums") == Vorgangstyp.SONSTIG
+
+    def test_antrag_rechnungshof_maps_to_sonstig(self):
+        assert map_vorgangstyp("Antrag des Rechnungshofs") == Vorgangstyp.SONSTIG
+
+    def test_anmerkung_plenarsitzung_maps_to_sonstig(self):
+        assert map_vorgangstyp("Anmerkung zur Plenarsitzung") == Vorgangstyp.SONSTIG
+
+    def test_ansprache_maps_to_sonstig(self):
+        assert map_vorgangstyp("Ansprache/Erklärung/Mitteilung") == Vorgangstyp.SONSTIG
+
+    def test_bericht_kontrollgremium_maps_to_sonstig(self):
+        assert map_vorgangstyp("Bericht des Parlamentarischen Kontrollgremiums") == Vorgangstyp.SONSTIG
+
+    def test_besetzung_extern_maps_to_sonstig(self):
+        assert map_vorgangstyp("Besetzung externer Gremien") == Vorgangstyp.SONSTIG
+
+    def test_besetzung_intern_maps_to_sonstig(self):
+        assert map_vorgangstyp("Besetzung interner Gremien") == Vorgangstyp.SONSTIG
+
+    def test_enquetekommission_maps_to_sonstig(self):
+        assert map_vorgangstyp("Enquetekommission") == Vorgangstyp.SONSTIG
+
+    def test_eu_vorlage_maps_to_sonstig(self):
+        assert map_vorgangstyp("EU-Vorlage") == Vorgangstyp.SONSTIG
+
+    def test_geschaeftsordnung_maps_to_sonstig(self):
+        assert map_vorgangstyp("Geschäftsordnung") == Vorgangstyp.SONSTIG
+
+    def test_immunitaet_maps_to_sonstig(self):
+        assert map_vorgangstyp("Immunitätsangelegenheit") == Vorgangstyp.SONSTIG
+
+    def test_mitteilung_landesregierung_maps_to_sonstig(self):
+        assert map_vorgangstyp("Mitteilung der Landesregierung/eines Ministeriums") == Vorgangstyp.SONSTIG
+
+    def test_mitteilung_buergerbeauftragten_maps_to_sonstig(self):
+        assert map_vorgangstyp("Mitteilung des Bürgerbeauftragten") == Vorgangstyp.SONSTIG
+
+    def test_mitteilung_datenschutz_maps_to_sonstig(self):
+        assert map_vorgangstyp("Mitteilung des Landesbeauftragten für den Datenschutz") == Vorgangstyp.SONSTIG
+
+    def test_mitteilung_praesident_maps_to_sonstig(self):
+        assert map_vorgangstyp("Mitteilung des Präsidenten") == Vorgangstyp.SONSTIG
+
+    def test_mitteilung_rechnungshof_maps_to_sonstig(self):
+        assert map_vorgangstyp("Mitteilung des Rechnungshofs") == Vorgangstyp.SONSTIG
+
+    def test_petitionen_maps_to_sonstig(self):
+        assert map_vorgangstyp("Petitionen") == Vorgangstyp.SONSTIG
+
+    def test_regierungsbefragung_maps_to_sonstig(self):
+        assert map_vorgangstyp("Regierungsbefragung") == Vorgangstyp.SONSTIG
+
+    def test_schreiben_bverfg_maps_to_sonstig(self):
+        assert map_vorgangstyp("Schreiben des Bundesverfassungsgerichts") == Vorgangstyp.SONSTIG
+
+    def test_schreiben_verfgh_maps_to_sonstig(self):
+        assert map_vorgangstyp("Schreiben des Verfassungsgerichtshofs") == Vorgangstyp.SONSTIG
+
+    def test_wahl_im_landtag_maps_to_sonstig(self):
+        assert map_vorgangstyp("Wahl im Landtag") == Vorgangstyp.SONSTIG
+
+    def test_wahlpruefung_maps_to_sonstig(self):
+        assert map_vorgangstyp("Wahlprüfung") == Vorgangstyp.SONSTIG
+
     def test_map_has_all_known_types(self):
         expected_keys = {
             "Gesetzgebung",
             "Haushaltsgesetzgebung",
             "Volksantrag",
             "Antrag",
+            "Antrag der Landesregierung/eines Ministeriums",
+            "Antrag des Rechnungshofs",
             "Kleine Anfrage",
             "Große Anfrage",
             "Mündliche Anfrage",
             "Aktuelle Debatte",
+            "Anmerkung zur Plenarsitzung",
+            "Ansprache/Erklärung/Mitteilung",
+            "Bericht des Parlamentarischen Kontrollgremiums",
+            "Besetzung externer Gremien",
+            "Besetzung interner Gremien",
+            "Enquetekommission",
+            "EU-Vorlage",
+            "Geschäftsordnung",
+            "Immunitätsangelegenheit",
+            "Mitteilung der Landesregierung/eines Ministeriums",
+            "Mitteilung des Bürgerbeauftragten",
+            "Mitteilung des Landesbeauftragten für den Datenschutz",
+            "Mitteilung des Präsidenten",
+            "Mitteilung des Rechnungshofs",
+            "Petitionen",
+            "Regierungsbefragung",
             "Regierungserklärung/Regierungsinformation",
+            "Schreiben des Bundesverfassungsgerichts",
+            "Schreiben des Verfassungsgerichtshofs",
             "Untersuchungsausschuss",
+            "Wahl im Landtag",
+            "Wahlprüfung",
         }
         assert set(VORGANGSTYP_MAP.keys()) == expected_keys
 

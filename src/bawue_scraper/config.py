@@ -12,11 +12,12 @@ class Config(BaseSettings):
     model_config = {"env_prefix": "", "env_file": ".env", "env_file_encoding": "utf-8"}
 
     # Required
-    ltzf_api_url: str
-    ltzf_api_key: str
-    collector_id: str
+    ltzf_api_url: str = "http://localhost:8080"
+    ltzf_api_key: str = ""
+    collector_id: str = "bawue-scraper"
 
     # Optional
+    ltzf_mode: str = "dry-run"  # "dry-run" (default, logs only) or "live" (HTTP calls)
     openai_api_key: str | None = None
     scrape_interval_hours: int = 24
     parlis_request_delay_s: float = 1.0

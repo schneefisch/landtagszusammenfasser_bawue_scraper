@@ -5,7 +5,7 @@ from datetime import date
 
 import pytest
 
-from bawue_scraper.orchestrator import Orchestrator
+from bawue_scraper.orchestrator import DEFAULT_VORGANGSTYPEN, Orchestrator
 
 
 @pytest.fixture()
@@ -133,6 +133,40 @@ class TestRunVorgaenge:
         mock_ltzf_api.submit_vorgang.assert_not_called()
         mock_cache.mark_processed.assert_not_called()
 
+    def test_does_not_mark_processed_when_submit_fails(
+        self, orchestrator, mock_vorgang_source, mock_ltzf_api, mock_cache
+    ):
+        mock_vorgang_source.search.return_value = [
+            _make_raw_vorgang("V-001"),
+            _make_raw_vorgang("V-002"),
+        ]
+        mock_cache.is_processed.return_value = False
+        mock_ltzf_api.submit_vorgang.side_effect = [False, True]
+
+        orchestrator.run_vorgaenge(
+            vorgangstypen=["Gesetzgebung"],
+            date_from=date(2026, 1, 1),
+            date_to=date(2026, 2, 1),
+        )
+
+        # V-001 returned False, should NOT be marked as processed
+        mock_cache.mark_processed.assert_called_once_with("V-002")
+
+    def test_failed_submit_counted_as_error(self, orchestrator, mock_vorgang_source, mock_ltzf_api, mock_cache, caplog):
+        mock_vorgang_source.search.return_value = [_make_raw_vorgang("V-001")]
+        mock_cache.is_processed.return_value = False
+        mock_ltzf_api.submit_vorgang.return_value = False
+
+        with caplog.at_level(logging.INFO):
+            orchestrator.run_vorgaenge(
+                vorgangstypen=["Gesetzgebung"],
+                date_from=date(2026, 1, 1),
+                date_to=date(2026, 2, 1),
+            )
+
+        assert "V-001" in caplog.text
+        assert "errors=1" in caplog.text
+
     def test_statistics_logged(self, orchestrator, mock_vorgang_source, mock_ltzf_api, mock_cache, caplog):
         mock_vorgang_source.search.return_value = [
             _make_raw_vorgang("V-001"),
@@ -161,6 +195,16 @@ class TestRunKalender:
             orchestrator.run_kalender()
 
 
+class TestDefaultVorgangstypen:
+    def test_contains_all_parlis_types(self):
+        assert "Gesetzgebung" in DEFAULT_VORGANGSTYPEN
+        assert "Kleine Anfrage" in DEFAULT_VORGANGSTYPEN
+        assert "Antrag" in DEFAULT_VORGANGSTYPEN
+        assert "Enquetekommission" in DEFAULT_VORGANGSTYPEN
+        assert "Wahlprüfung" in DEFAULT_VORGANGSTYPEN
+        assert len(DEFAULT_VORGANGSTYPEN) == 32
+
+
 class TestRun:
     def test_run_calls_run_vorgaenge(self, orchestrator, mock_vorgang_source, mock_ltzf_api, mock_cache):
         mock_vorgang_source.search.return_value = []
@@ -175,6 +219,35 @@ class TestRun:
         mock_vorgang_source.search.return_value = []
         # Should not raise even though run_kalender raises NotImplementedError
         orchestrator.run()
+
+    def test_run_with_single_type_override(self, orchestrator, mock_vorgang_source, mock_cache):
+        mock_vorgang_source.search.return_value = []
+
+        orchestrator.run(vorgangstypen=["Antrag"])
+
+        assert mock_vorgang_source.search.call_count == 1
+        call_args = mock_vorgang_source.search.call_args
+        assert call_args[0][0] == "Antrag"
+
+    def test_run_with_date_overrides(self, orchestrator, mock_vorgang_source, mock_cache):
+        mock_vorgang_source.search.return_value = []
+
+        orchestrator.run(
+            vorgangstypen=["Gesetzgebung"],
+            date_from=date(2025, 6, 1),
+            date_to=date(2025, 12, 31),
+        )
+
+        call_args = mock_vorgang_source.search.call_args
+        assert call_args[0][1] == date(2025, 6, 1)
+        assert call_args[0][2] == date(2025, 12, 31)
+
+    def test_run_defaults_use_all_vorgangstypen(self, orchestrator, mock_vorgang_source, mock_cache):
+        mock_vorgang_source.search.return_value = []
+
+        orchestrator.run()
+
+        assert mock_vorgang_source.search.call_count == len(DEFAULT_VORGANGSTYPEN)
 
 
 class TestBuildVorgang:

@@ -1,10 +1,15 @@
 """LTZF client: submits collected data to the LTZF backend API."""
 
+import logging
 from datetime import date
+
+import requests
 
 from bawue_scraper.config import Config
 from bawue_scraper.domain.models import Sitzung, Vorgang
 from bawue_scraper.ports.ltzf_api import LtzfApi
+
+logger = logging.getLogger(__name__)
 
 
 class LtzfClient(LtzfApi):
@@ -12,18 +17,33 @@ class LtzfClient(LtzfApi):
 
     def __init__(self, config: Config) -> None:
         self._config = config
-        # todo: initialize requests.Session with X-API-Key header
+        self._session = requests.Session()
+        self._session.headers.update(
+            {
+                "X-API-Key": config.ltzf_api_key,
+                "X-Scraper-Id": config.collector_id,
+                "Content-Type": "application/json",
+            }
+        )
 
     def submit_vorgang(self, vorgang: Vorgang) -> bool:
         """Submit a Vorgang via PUT /api/v2/vorgang."""
-        # todo: serialize Vorgang to JSON
-        # todo: PUT to {ltzf_api_url}/api/v2/vorgang
-        # todo: handle HTTP errors and rate limiting
-        raise NotImplementedError
+        url = f"{self._config.ltzf_api_url}/api/v2/vorgang"
+        body = vorgang.model_dump(mode="json", exclude_none=True)
+
+        try:
+            resp = self._session.put(url, json=body)
+            if resp.status_code in (201, 409):
+                return True
+            logger.error("Failed to submit Vorgang %s: HTTP %s", vorgang.titel, resp.status_code)
+            return False
+        except requests.ConnectionError as e:
+            logger.error("Cannot reach LTZF API at %s: %s", url, e)
+            return False
+        except requests.RequestException:
+            logger.exception("Request error submitting Vorgang %s", vorgang.titel)
+            return False
 
     def submit_sitzungen(self, datum: date, sitzungen: list[Sitzung]) -> bool:
         """Submit Sitzungen via PUT /api/v2/kalender/BW/{datum}."""
-        # todo: serialize Sitzungen to JSON
-        # todo: PUT to {ltzf_api_url}/api/v2/kalender/BW/{datum}
-        # todo: handle HTTP errors and rate limiting
         raise NotImplementedError

@@ -2,17 +2,16 @@
 
 import argparse
 import logging
-import sys
-
-from pydantic import ValidationError
+from datetime import date, datetime
 
 from bawue_scraper.adapters.cache_manager import CacheManager
 from bawue_scraper.adapters.ics_adapter import IcsAdapter
+from bawue_scraper.adapters.logging_ltzf_client import LoggingLtzfClient
 from bawue_scraper.adapters.ltzf_client import LtzfClient
 from bawue_scraper.adapters.parlis_adapter import ParlisAdapter
 from bawue_scraper.adapters.pdf_extractor import PdfExtractor
 from bawue_scraper.config import Config
-from bawue_scraper.orchestrator import Orchestrator
+from bawue_scraper.orchestrator import DEFAULT_VORGANGSTYPEN, Orchestrator
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -58,16 +57,7 @@ def main(argv: list[str] | None = None) -> None:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    try:
-        config = Config()  # type: ignore[call-arg]
-    except ValidationError:
-        print(
-            "Error: Missing required configuration.\n"
-            "Set LTZF_API_URL, LTZF_API_KEY, and COLLECTOR_ID as environment variables\n"
-            "or create a .env file (see .env.example).",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+    config = Config()  # type: ignore[call-arg]
 
     log_level = args.log_level or config.log_level
     logging.basicConfig(
@@ -79,8 +69,14 @@ def main(argv: list[str] | None = None) -> None:
     parlis = ParlisAdapter(config)
     pdf_extractor = PdfExtractor(config)
     ics = IcsAdapter(config)
-    ltzf = LtzfClient(config)
     cache = CacheManager(config)
+
+    if config.ltzf_mode == "live":
+        ltzf = LtzfClient(config)
+        logging.getLogger(__name__).info("LTZF mode: live (submitting to %s)", config.ltzf_api_url)
+    else:
+        ltzf = LoggingLtzfClient()
+        logging.getLogger(__name__).info("LTZF mode: dry-run (logging only, set LTZF_MODE=live to submit)")
 
     orchestrator = Orchestrator(
         config=config,
@@ -91,14 +87,25 @@ def main(argv: list[str] | None = None) -> None:
         cache=cache,
     )
 
-    # todo: pass args.vorgangstyp, args.date_from, args.date_to to orchestrator
+    # Build override kwargs from CLI args
+    overrides: dict = {}
+    if args.vorgangstyp:
+        overrides["vorgangstypen"] = [args.vorgangstyp]
+    if args.date_from:
+        overrides["date_from"] = datetime.strptime(args.date_from, "%d.%m.%Y").date()
+    if args.date_to:
+        overrides["date_to"] = datetime.strptime(args.date_to, "%d.%m.%Y").date()
 
     if args.kalender_only:
         orchestrator.run_kalender()
     elif args.vorgaenge_only:
-        orchestrator.run_vorgaenge()
+        orchestrator.run_vorgaenge(
+            vorgangstypen=overrides.get("vorgangstypen", DEFAULT_VORGANGSTYPEN),
+            date_from=overrides.get("date_from", date(2026, 1, 1)),
+            date_to=overrides.get("date_to", date.today()),
+        )
     else:
-        orchestrator.run()
+        orchestrator.run(**overrides)
 
 
 if __name__ == "__main__":

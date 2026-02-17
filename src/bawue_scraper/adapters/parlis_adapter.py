@@ -1,5 +1,6 @@
 """PARLIS adapter: fetches Vorgang data from the BaWue parliament's PARLIS system."""
 
+import calendar
 import logging
 import re
 import time
@@ -156,8 +157,27 @@ class ParlisAdapter(VorgangSource):
 
         return results
 
-    def search(self, vorgangstyp: str, date_from: date, date_to: date) -> list[dict]:
-        """Search PARLIS for Vorgänge matching the given criteria."""
+    @staticmethod
+    def _monthly_windows(date_from: date, date_to: date) -> list[tuple[date, date]]:
+        """Split a date range into monthly windows."""
+        windows = []
+        current = date_from
+        while current <= date_to:
+            last_day = calendar.monthrange(current.year, current.month)[1]
+            window_end = date(current.year, current.month, last_day)
+            if window_end > date_to:
+                window_end = date_to
+            windows.append((current, window_end))
+            # Move to first day of next month
+            current = date(current.year + 1, 1, 1) if current.month == 12 else date(current.year, current.month + 1, 1)
+        return windows
+
+    def _search_single(self, vorgangstyp: str, date_from: date, date_to: date) -> list[dict] | None:
+        """Execute a single search against PARLIS.
+
+        Returns:
+            A list of results, or None if the search was too large (status=running).
+        """
         self._establish_session()
 
         query = self._build_query(vorgangstyp, date_from, date_to)
@@ -186,9 +206,10 @@ class ParlisAdapter(VorgangSource):
             star = sources.get("Star", {})
             if star.get("status") == "running" and int(star.get("hits", 0)) > 0:
                 logger.warning(
-                    "Search too large (%d hits, still running). Needs date subdivision.",
+                    "Search too large (%d hits, still running). Subdividing into monthly windows.",
                     int(star["hits"]),
                 )
+                return None
             return []
 
         if item_count == 0:
@@ -202,6 +223,32 @@ class ParlisAdapter(VorgangSource):
             page_results = self._parse_results(html_content)
             all_results.extend(page_results)
             logger.info("Fetched page start=%d, got %d records", start, len(page_results))
+
+        return all_results
+
+    def search(self, vorgangstyp: str, date_from: date, date_to: date) -> list[dict]:
+        """Search PARLIS for Vorgänge matching the given criteria.
+
+        If PARLIS indicates the result set is too large (status=running), automatically
+        subdivides the date range into monthly windows and retries.
+        """
+        results = self._search_single(vorgangstyp, date_from, date_to)
+        if results is not None:
+            return results
+
+        # Subdivide into monthly windows
+        all_results: list[dict] = []
+        for window_from, window_to in self._monthly_windows(date_from, date_to):
+            time.sleep(self._config.parlis_request_delay_s)
+            window_results = self._search_single(vorgangstyp, window_from, window_to)
+            if window_results is None:
+                logger.warning(
+                    "Monthly window %s-%s still too large, skipping.",
+                    window_from,
+                    window_to,
+                )
+                continue
+            all_results.extend(window_results)
 
         return all_results
 

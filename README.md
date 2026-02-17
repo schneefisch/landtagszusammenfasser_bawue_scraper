@@ -51,16 +51,16 @@ python -m bawue_scraper --kalender-only
 
 All configuration is via environment variables (or a `.env` file). See [.env.example](.env.example) for all options.
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `LTZF_API_URL` | Yes | LTZF backend base URL |
-| `LTZF_API_KEY` | Yes | API key with `collector` scope |
-| `COLLECTOR_ID` | Yes | Unique identifier for this collector instance |
-| `OPENAI_API_KEY` | No | Enables LLM-based PDF extraction fallback |
-| `SCRAPE_INTERVAL_HOURS` | No | Interval between scraping cycles (default: 24) |
-| `PARLIS_REQUEST_DELAY_S` | No | Delay between PARLIS requests in seconds (default: 1.0) |
-| `LOG_LEVEL` | No | Logging level (default: INFO) |
-| `CACHE_DIR` | No | Directory for persistent cache (default: `./cache`) |
+| Variable                 | Required | Description                                             |
+|--------------------------|----------|---------------------------------------------------------|
+| `LTZF_API_URL`           | Yes      | LTZF backend base URL                                   |
+| `LTZF_API_KEY`           | Yes      | API key with `collector` scope                          |
+| `COLLECTOR_ID`           | Yes      | Unique identifier for this collector instance           |
+| `OPENAI_API_KEY`         | No       | Enables LLM-based PDF extraction fallback               |
+| `SCRAPE_INTERVAL_HOURS`  | No       | Interval between scraping cycles (default: 24)          |
+| `PARLIS_REQUEST_DELAY_S` | No       | Delay between PARLIS requests in seconds (default: 1.0) |
+| `LOG_LEVEL`              | No       | Logging level (default: INFO)                           |
+| `CACHE_DIR`              | No       | Directory for persistent cache (default: `./cache`)     |
 
 ## Development
 

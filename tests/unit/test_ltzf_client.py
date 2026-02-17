@@ -1,20 +1,102 @@
 """Tests for the LTZF API client."""
 
+import logging
+
 import pytest
+import responses
 
 from bawue_scraper.adapters.ltzf_client import LtzfClient
 
 
-class TestLtzfClient:
-    def test_instantiation(self, config):
+class TestLtzfClientSubmitVorgang:
+    @responses.activate
+    def test_submit_vorgang_success(self, config, sample_vorgang):
+        responses.put(
+            "http://localhost:8080/api/v2/vorgang",
+            status=201,
+        )
         client = LtzfClient(config)
-        assert client._config is config
+        result = client.submit_vorgang(sample_vorgang)
+        assert result is True
 
-    def test_submit_vorgang_not_implemented(self, config, sample_vorgang):
+    @responses.activate
+    def test_submit_vorgang_sends_correct_headers(self, config, sample_vorgang):
+        responses.put(
+            "http://localhost:8080/api/v2/vorgang",
+            status=201,
+        )
         client = LtzfClient(config)
-        with pytest.raises(NotImplementedError):
-            client.submit_vorgang(sample_vorgang)
+        client.submit_vorgang(sample_vorgang)
 
+        request = responses.calls[0].request
+        assert request.headers["X-API-Key"] == "test-api-key"
+        assert request.headers["X-Scraper-Id"] == "test-collector"
+        assert request.headers["Content-Type"] == "application/json"
+
+    @responses.activate
+    def test_submit_vorgang_serializes_body(self, config, sample_vorgang):
+        responses.put(
+            "http://localhost:8080/api/v2/vorgang",
+            status=201,
+        )
+        client = LtzfClient(config)
+        client.submit_vorgang(sample_vorgang)
+
+        import json
+
+        request = responses.calls[0].request
+        sent_body = json.loads(request.body)
+        expected_body = sample_vorgang.model_dump(mode="json", exclude_none=True)
+        assert sent_body == expected_body
+
+    @responses.activate
+    def test_submit_vorgang_http_error_returns_false(self, config, sample_vorgang):
+        responses.put(
+            "http://localhost:8080/api/v2/vorgang",
+            status=500,
+        )
+        client = LtzfClient(config)
+        result = client.submit_vorgang(sample_vorgang)
+        assert result is False
+
+    @responses.activate
+    def test_submit_vorgang_conflict_returns_true(self, config, sample_vorgang):
+        responses.put(
+            "http://localhost:8080/api/v2/vorgang",
+            status=409,
+        )
+        client = LtzfClient(config)
+        result = client.submit_vorgang(sample_vorgang)
+        assert result is True
+
+    @responses.activate
+    def test_submit_vorgang_forbidden_returns_false(self, config, sample_vorgang, caplog):
+        responses.put(
+            "http://localhost:8080/api/v2/vorgang",
+            status=403,
+        )
+        client = LtzfClient(config)
+        result = client.submit_vorgang(sample_vorgang)
+        assert result is False
+
+    def test_submit_vorgang_connection_error_logs_concise_message(self, config, sample_vorgang, caplog):
+        """ConnectionError should produce a short log message, not a full traceback."""
+        client = LtzfClient(config)
+
+        import requests as req
+
+        client._session.put = lambda *a, **kw: (_ for _ in ()).throw(req.ConnectionError("Connection refused"))
+
+        with caplog.at_level(logging.ERROR):
+            result = client.submit_vorgang(sample_vorgang)
+
+        assert result is False
+        assert "Connection refused" in caplog.text
+        # Should NOT contain a full traceback
+        assert "Traceback" not in caplog.text
+
+
+class TestLtzfClientSubmitSitzungen:
     def test_submit_sitzungen_not_implemented(self, config, sample_sitzung):
         from datetime import date
 
@@ -22,6 +104,29 @@ class TestLtzfClient:
         with pytest.raises(NotImplementedError):
             client.submit_sitzungen(date(2026, 2, 5), [sample_sitzung])
 
-    # todo: add tests for API key header
-    # todo: add tests for HTTP error handling with responses library
-    # todo: add tests for rate limiting
+
+class TestLoggingLtzfClient:
+    def test_submit_vorgang_returns_true(self, sample_vorgang, caplog):
+        from bawue_scraper.adapters.logging_ltzf_client import LoggingLtzfClient
+
+        client = LoggingLtzfClient()
+
+        with caplog.at_level(logging.INFO):
+            result = client.submit_vorgang(sample_vorgang)
+
+        assert result is True
+        assert sample_vorgang.titel in caplog.text
+        assert "dry-run" in caplog.text.lower() or "DRY-RUN" in caplog.text
+
+    def test_submit_sitzungen_returns_true(self, sample_sitzung, caplog):
+        from datetime import date
+
+        from bawue_scraper.adapters.logging_ltzf_client import LoggingLtzfClient
+
+        client = LoggingLtzfClient()
+
+        with caplog.at_level(logging.INFO):
+            result = client.submit_sitzungen(date(2026, 2, 5), [sample_sitzung])
+
+        assert result is True
+        assert "dry-run" in caplog.text.lower() or "DRY-RUN" in caplog.text
