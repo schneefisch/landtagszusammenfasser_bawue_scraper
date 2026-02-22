@@ -2,7 +2,9 @@
 
 ## 1. System Overview
 
-The BaWue Scraper is a **Collector** component within the Landtagszusammenfasser (LTZF) ecosystem. It gathers legislative data from the Baden-Württemberg state parliament and delivers it to the LTZF backend via a REST API.
+The BaWue Scraper is a **Collector** component within the Parlamentszusammenfasser (PaZuFa, formerly Landtagszusammenfasser/LTZF) ecosystem. It gathers legislative data from the Baden-Württemberg state parliament and delivers it to the PaZuFa backend via a REST API.
+
+> **Note:** The project has migrated from GitHub to [Codeberg](https://codeberg.org/PaZuFa). See [parlamentszusammenfasser](https://codeberg.org/PaZuFa/parlamentszusammenfasser) for the main project, [pazufa-collector](https://codeberg.org/PaZuFa/pazufa-collector) for the reference collector, and [pazufa-backend](https://codeberg.org/PaZuFa/pazufa-backend) for the backend.
 
 ```mermaid
 graph LR
@@ -16,10 +18,10 @@ graph LR
         Scraper["Collector<br/>Parlament: BW"]
     end
 
-    subgraph "LTZF Platform"
-        API["LTZF Backend<br/>Write-API v2"]
+    subgraph "PaZuFa Platform"
+        API["PaZuFa Backend<br/>Write-API v2"]
         DB[(Database)]
-        Web["LTZF Website"]
+        Web["PaZuFa Website"]
     end
 
     PARLIS -->|"HTML results"| Scraper
@@ -34,7 +36,7 @@ graph LR
 - Parliament code: `BW`
 - Current Wahlperiode: 17
 - Authentication: `X-API-Key` header with `collector` scope
-- The LTZF backend handles deduplication — the scraper does not need to
+- The PaZuFa backend handles deduplication/merging — the scraper does not need to
 
 ## 2. Technology Choice
 
@@ -92,7 +94,7 @@ graph TB
 - `VorgangSource` — fetches raw Vorgang data from a parliament
 - `DocumentExtractor` — extracts text from a document binary
 - `CalendarSource` — provides session/calendar data
-- `LtzfApi` — submits data to the LTZF backend
+- `LtzfApi` — submits data to the PaZuFa backend
 - `Cache` — tracks already-processed items
 
 **Adapters** (implementations):
@@ -184,12 +186,12 @@ Implements the `CalendarSource` port.
 
 ### 5.5 Enum Mapper
 
-Maps PARLIS terminology to LTZF enum values.
+Maps PARLIS terminology to PaZuFa/LTZF enum values.
 
 **Responsibilities:**
-- Map Vorgangstyp strings to LTZF `typ` enum (see section 8)
-- Map Fundstelle station types to LTZF `Stationstyp` enum
-- Map document references to LTZF `Dokumententyp` enum
+- Map Vorgangstyp strings to PaZuFa `typ` enum (see section 8)
+- Map Fundstelle station types to PaZuFa `Stationstyp` enum
+- Map document references to PaZuFa `Dokumententyp` enum
 - Flag unmappable values for manual review
 
 ### 5.6 LTZF Client
@@ -213,11 +215,11 @@ Implements the `Cache` port. Prevents redundant processing.
 
 ### 5.8 Domain Models
 
-Pydantic models that mirror the LTZF API data structures.
+Pydantic models that mirror the PaZuFa API data structures.
 
 **Models:** `Vorgang`, `Station`, `Dokument`, `Sitzung`, `Gremium`, `Autor`, `Top`
 
-All models enforce required fields from the LTZF API specification and serialize to the expected JSON format.
+All models enforce required fields from the PaZuFa API specification (OpenAPI v0.2.3) and serialize to the expected JSON format.
 
 ## 6. PARLIS Scraping Strategy
 
@@ -311,9 +313,9 @@ Each extracted document gets a SHA-256 hash computed from the PDF binary for the
 
 ## 8. Enum Mapping
 
-### Vorgangstyp → LTZF `typ`
+### Vorgangstyp → PaZuFa `typ`
 
-| PARLIS Vorgangstyp | LTZF `typ` |
+| PARLIS Vorgangstyp | PaZuFa `typ` |
 |--------------------|------------|
 | Gesetzgebung | `gg-land-parl` |
 | Haushaltsgesetzgebung | `gg-land-parl` |
@@ -327,9 +329,9 @@ Each extracted document gets a SHA-256 hash computed from the PDF binary for the
 | Untersuchungsausschuss | `sonstig` |
 | *(all others)* | `sonstig` |
 
-### Fundstelle station type → LTZF `Stationstyp`
+### Fundstelle station type → PaZuFa `Stationstyp`
 
-| Fundstelle text pattern | LTZF `Stationstyp` |
+| Fundstelle text pattern | PaZuFa `Stationstyp` |
 |------------------------|---------------------|
 | Gesetzentwurf (from Landesregierung) | `preparl-regent` |
 | Gesetzentwurf (from Fraktion/Abgeordnete) | `parl-initiativ` |
@@ -346,7 +348,7 @@ Each extracted document gets a SHA-256 hash computed from the PDF binary for the
 
 ### Dokumententyp mapping
 
-| Document context | LTZF `Dokumententyp` |
+| Document context | PaZuFa `Dokumententyp` |
 |-----------------|----------------------|
 | Gesetzentwurf (vorparlamentarisch) | `preparl-entwurf` |
 | Gesetzentwurf (parlamentarisch) | `entwurf` |
@@ -381,7 +383,7 @@ If more than **5 consecutive requests** to the same host fail, pause scraping fo
 - If PDF extraction fails → submit Vorgang without `volltext`, log warning
 - If ICS calendar is unavailable → skip Sitzung data, continue with Vorgänge
 - If a single Vorgang fails → log error, continue with next Vorgang
-- If LTZF API is unreachable → queue submissions for later retry (or abort run with clear error)
+- If PaZuFa API is unreachable → queue submissions for later retry (or abort run with clear error)
 
 ## 10. Deployment
 
@@ -407,7 +409,7 @@ Dockerfile
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `LTZF_API_URL` | Yes | LTZF backend base URL |
+| `LTZF_API_URL` | Yes | PaZuFa backend base URL |
 | `LTZF_API_KEY` | Yes | API key (scope: collector) |
 | `COLLECTOR_ID` | Yes | Unique identifier for this collector instance |
 | `SCRAPE_INTERVAL_HOURS` | No | Interval between scraping cycles (daemon mode, default: 24) |
@@ -423,7 +425,7 @@ Dockerfile
 | **PARLIS session instability** | Intermittent failures | Medium | Automatic session re-establishment on auth failures. Monitor session lifetime. |
 | **Large result sets** | API returns `status: "running"` without data | High (confirmed) | Incremental date filtering to keep result sets within PARLIS limits. |
 | **PDF quality** | Missing or garbled fulltext | Medium | Three-stage extraction waterfall (pdfplumber → OCR → LLM). Accept partial text rather than failing. |
-| **Enum ambiguity** | Incorrect mapping of PARLIS types to LTZF enums | Medium | Conservative mapping — use `sonstig` as fallback. Log all unmapped values for review. Maintain mapping table in config for easy updates. |
+| **Enum ambiguity** | Incorrect mapping of PARLIS types to PaZuFa enums | Medium | Conservative mapping — use `sonstig` as fallback. Log all unmapped values for review. Maintain mapping table in config for easy updates. |
 | **Rate limiting by Landtag** | IP blocked, scraper unusable | Low | Respectful delays between requests (configurable). Identify via descriptive `User-Agent`. |
 | **Fundstelle text format changes** | Station parsing breaks | Medium | Regex-based parsing with fallback to raw text. Unit tests with known Fundstelle samples. |
 | **verfassungsaendernd not available** | Required field cannot be determined | High (confirmed) | PARLIS does not expose this field. Infer from title keywords (e.g. "Verfassungsänderung", "Grundgesetz"). Default to `false` with log note. |

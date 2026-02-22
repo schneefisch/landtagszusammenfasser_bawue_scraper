@@ -3,7 +3,10 @@
 [![CI](https://github.com/schneefisch/landtagszusammenfasser_bawue_scraper/actions/workflows/ci.yml/badge.svg)](https://github.com/schneefisch/landtagszusammenfasser_bawue_scraper/actions/workflows/ci.yml)
 ![Coverage](https://raw.githubusercontent.com/schneefisch/landtagszusammenfasser_bawue_scraper/badges/badge-coverage.svg)
 
-Collector for the Baden-Württemberg state parliament ([Landtag BW](https://www.landtag-bw.de/)) as part of the [Landtagszusammenfasser](https://github.com/Chrystalkey/landtagszusammenfasser) (LTZF) platform. Scrapes legislative proceedings (Vorgänge), documents, and session calendars from the PARLIS system and delivers them to the LTZF backend via its REST API.
+Collector for the Baden-Württemberg state parliament ([Landtag BW](https://www.landtag-bw.de/)) as part of
+the [Parlamentszusammenfasser](https://codeberg.org/PaZuFa/parlamentszusammenfasser) (PaZuFa/LTZF) platform. Scrapes
+legislative proceedings (Vorgänge), documents, and session calendars from the PARLIS system and delivers them to the
+LTZF backend via its REST API.
 
 ## Prerequisites
 
@@ -138,36 +141,46 @@ src/bawue_scraper/
 
 ## Architecture
 
-The scraper follows a **hexagonal (ports & adapters)** architecture. The domain core defines interfaces (ports) that are implemented by adapters for external systems. See [docs/architecture.md](docs/architecture.md) for the full architecture documentation.
+The scraper follows a **hexagonal (ports & adapters)** architecture. The domain core defines interfaces (ports) that are
+implemented by adapters for external systems. See [docs/architecture.md](docs/architecture.md) for the full architecture
+documentation.
 
 **Data sources:**
+
 - **PARLIS** — undocumented JSON/HTML API at `parlis.landtag-bw.de` (primary source for Vorgänge)
 - **PDFs** — Drucksachen from `landtag-bw.de` (fulltext extraction via pdfplumber/OCR/LLM)
 - **ICS Calendar** — parliamentary session dates
 
 **Data delivery:**
+
 - `PUT /api/v2/vorgang` — submit legislative proceedings
 - `PUT /api/v2/kalender/{parlament}/{datum}` — submit session data
 
 ## Links
 
-### Parlamentszusammenfasser (GitHub Org)
+### PaZuFa / Parlamentszusammenfasser (Codeberg)
 
-* [GitHub Organization](https://github.com/Parlamentszusammenfasser)
-* [collector-core](https://github.com/Parlamentszusammenfasser/collector-core) — Core library for collecting parliamentary data
-* [parlamentsspiegel-docu](https://github.com/Parlamentszusammenfasser/parlamentsspiegel-docu) — Search parameter documentation for Parlamentsspiegel
+> **Note:** The project has migrated from GitHub to [Codeberg](https://codeberg.org/PaZuFa). The old GitHub repositories
+> are archived.
+
+* [PaZuFa Organization](https://codeberg.org/PaZuFa)
+* [parlamentszusammenfasser](https://codeberg.org/PaZuFa/parlamentszusammenfasser) — Main project (formerly
+  `landtagszusammenfasser`)
+* [pazufa-collector](https://codeberg.org/PaZuFa/pazufa-collector) — Reference collector (formerly `ltzf-collector`)
+* [pazufa-backend](https://codeberg.org/PaZuFa/pazufa-backend) — Backend service (formerly `ltzf-backend`)
 
 ### General
 
-* [Landtagszusammenfasser (original repo)](https://github.com/Chrystalkey/landtagszusammenfasser)
 * [Bundestagszusammenfasser](https://bundestagszusammenfasser.de/)
 * [Landtag BaWue](https://www.landtag-bw.de/)
 
-### LTZF Documentation
+### PaZuFa Documentation
 
-* [Landtagszusammenfasser docs](https://github.com/Chrystalkey/landtagszusammenfasser/blob/main/docs/README.md)
-* [OpenAPI-Spezifikation](https://github.com/Chrystalkey/landtagszusammenfasser/blob/main/docs/specs/openapi.yml)
-* [Scraper/Collectors Repo (Referenz)](https://github.com/Chrystalkey/ltzf-collector/tree/main)
+* [Parlamentszusammenfasser docs](https://codeberg.org/PaZuFa/parlamentszusammenfasser/src/branch/main/docs/README.md)
+* [OpenAPI-Spezifikation](https://codeberg.org/PaZuFa/parlamentszusammenfasser/src/branch/main/docs/specs/openapi.yml)
+* [Authentication](https://codeberg.org/PaZuFa/parlamentszusammenfasser/src/branch/main/docs/authentication.md)
+* [CONTRIBUTING](https://codeberg.org/PaZuFa/parlamentszusammenfasser/src/branch/main/CONTRIBUTING.md)
+* [SETUP](https://codeberg.org/PaZuFa/parlamentszusammenfasser/src/branch/main/SETUP.md)
 
 ### Project Documentation
 

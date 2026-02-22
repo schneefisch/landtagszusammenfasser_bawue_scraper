@@ -6,9 +6,9 @@ See [root CLAUDE.md](../../CLAUDE.md) for base instructions!
 
 ## Project Overview
 
-BaWue Scraper is a Python collector for the Landtagszusammenfasser (LTZF) platform. It scrapes legislative data (
-Vorgänge, Drucksachen, sessions) from the Baden-Württemberg PARLIS system and delivers it to the LTZF backend via REST
-API.
+BaWue Scraper is a Python collector for the Parlamentszusammenfasser (PaZuFa, formerly LTZF) platform. It scrapes
+legislative data (Vorgänge, Drucksachen, sessions) from the Baden-Württemberg PARLIS system and delivers it to the
+PaZuFa backend via REST API. The project has migrated from GitHub to [Codeberg](https://codeberg.org/PaZuFa).
 
 ## Commands
 
@@ -28,7 +28,7 @@ python -m bawue_scraper --kalender-only           # skip Vorgänge
 pytest                                            # unit tests only
 pytest tests/unit/test_orchestrator.py             # single file
 pytest tests/unit/test_orchestrator.py::TestClass::test_name  # single test
-pytest -m integration                             # requires local LTZF backend
+pytest -m integration                             # requires local PaZuFa backend
 pytest -m slow                                    # requires internet (live PARLIS)
 pytest -m ""                                      # all tests
 pytest --cov=bawue_scraper                        # with coverage
@@ -42,8 +42,8 @@ ruff format src/ tests/                           # format
 docker build -t bawue-scraper .
 docker run --env-file .env bawue-scraper
 
-# Local LTZF backend for integration tests
-./scripts/setup.sh    # one-time: clone LTZF repo
+# Local PaZuFa backend for integration tests
+./scripts/setup.sh    # one-time: clone PaZuFa repo
 ./scripts/start.sh    # start backend (Docker)
 ./scripts/stop.sh     # stop backend
 ```
@@ -57,7 +57,7 @@ Orchestrator (pipeline coordinator)
   ├── VorgangSource port  ←  ParlisAdapter   (PARLIS JSON API + HTML scraping)
   ├── DocumentExtractor   ←  PdfExtractor    (3-stage: pdfplumber → OCR → LLM)
   ├── CalendarSource      ←  IcsAdapter      (ICS calendar parsing)
-  ├── LtzfApi port        ←  LtzfClient      (HTTP client to LTZF backend)
+  ├── LtzfApi port        ←  LtzfClient      (HTTP client to PaZuFa backend)
   └── Cache port          ←  CacheManager    (file-based or in-memory)
 ```
 
@@ -66,7 +66,7 @@ Orchestrator (pipeline coordinator)
 - `src/bawue_scraper/ports/` — abstract interfaces (ABCs)
 - `src/bawue_scraper/adapters/` — concrete implementations
 - `src/bawue_scraper/domain/` — Pydantic models (`Vorgang`, `Station`, `Dokument`, `Sitzung`, etc.) and enums
-- `src/bawue_scraper/mapping/enum_mapper.py` — PARLIS → LTZF enum conversions
+- `src/bawue_scraper/mapping/enum_mapper.py` — PARLIS → PaZuFa enum conversions
 - `src/bawue_scraper/orchestrator.py` — coordinates the full scraping pipeline
 - `src/bawue_scraper/config.py` — pydantic-settings config from env vars / `.env`
 
@@ -79,7 +79,7 @@ Environment variables (see `.env.example`). Key required vars: `LTZF_API_URL`, `
 
 - Tests use `responses` library for HTTP mocking and `pytest-mock` for dependency injection
 - `tests/conftest.py` provides shared fixtures (config, sample domain models, adapter mocks)
-- Markers: `@pytest.mark.integration` (needs LTZF backend), `@pytest.mark.slow` (needs internet)
+- Markers: `@pytest.mark.integration` (needs PaZuFa backend), `@pytest.mark.slow` (needs internet)
 - New adapters: mock the port interface, test independently
 
 ## Tech Stack
